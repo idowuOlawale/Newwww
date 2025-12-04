@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallet Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <style>
+    body { background: linear-gradient(to bottom, #1a1a2e, #16213e); color: #e0e0e0; font-family: 'Arial', sans-serif; margin: 0; padding: 20px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .container { max-width: 600px; background: #0f0f23; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+    h1 { color: #60a5fa; text-align: center; margin-bottom: 30px; font-size: 28px; }
+    button { background: linear-gradient(to right, #3b82f6, #2563eb); color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 8px; cursor: pointer; transition: 0.3s; width: 100%; margin-bottom: 20px; }
+    button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4); }
+    .info { background: #1e293b; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+    .balance { font-size: 24px; font-weight: bold; color: #86efac; }
+    .tx-list { list-style: none; padding: 0; }
+    .tx-item { background: #334155; padding: 10px; border-radius: 8px; margin-bottom: 10px; word-break: break-all; }
+    .tx-item a { color: #60a5fa; text-decoration: none; }
+    .tx-item a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Wallet Dashboard</h1>
+    <div id="status">Not connected</div>
+    <button id="connectBtn">Connect Wallet</button>
+    <button id="disconnectBtn" style="display:none; background: linear-gradient(to right, #ef4444, #dc2626);">Disconnect</button>
+
+    <div id="accountInfo" style="display:none;">
+      <div class="info">
+        <p><strong>Address:</strong> <span id="address"></span></p>
+        <p><strong>Chain:</strong> <span id="chainName"></span> (ID: <span id="chainId"></span>)</p>
+        <p class="balance"><strong>Balance:</strong> <span id="balance">0</span> <span id="symbol"></span></p>
+      </div>
+
+      <div class="info">
+        <h2>Last 10 Transactions</h2>
+        <button id="loadTxBtn">Load Transactions</button>
+        <ul id="txList" class="tx-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let web3;
+    let provider;
+    let userAddress;
+    let currentChainId;
+
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const status = document.getElementById('status');
+    const accountInfo = document.getElementById('accountInfo');
+    const addressEl = document.getElementById('address');
+    const chainIdEl = document.getElementById('chainId');
+    const chainNameEl = document.getElementById('chainName');
+    const balanceEl = document.getElementById('balance');
+    const symbolEl = document.getElementById('symbol');
+    const loadTxBtn = document.getElementById('loadTxBtn');
+    const txList = document.getElementById('txList');
+
+    // Multi-chain configs (RPCs, explorers, symbols)
+    const chains = {
+      1: { name: 'Ethereum', rpc: 'https://mainnet.infura.io/v3/9aa3d9b819cd472618de963d915b9ea3', symbol: 'ETH', explorer: 'https://api.etherscan.io/api' },
+      137: { name: 'Polygon', rpc: 'https://polygon-rpc.com', symbol: 'MATIC', explorer: 'https://api.polygonscan.com/api' },
+      56: { name: 'BNB Chain', rpc: 'https://bsc-dataseed.binance.org', symbol: 'BNB', explorer: 'https://api.bscscan.com/api' },
+      42161: { name: 'Arbitrum', rpc: 'https://arb1.arbitrum.io/rpc', symbol: 'ETH', explorer: 'https://api.arbiscan.io/api' },
+      10: { name: 'Optimism', rpc: 'https://mainnet.optimism.io', symbol: 'ETH', explorer: 'https://api.optimistic.etherscan.io/api' },
+      8453: { name: 'Base', rpc: 'https://mainnet.base.org', symbol: 'ETH', explorer: 'https://api.basescan.org/api' },
+      43114: { name: 'Avalanche', rpc: 'https://api.avax.network/ext/bc/C/rpc', symbol: 'AVAX', explorer: 'https://api.snowtrace.io/api' },
+      // Add more EVM chains as needed
+    };
+
+    // Connect with MetaMask or WalletConnect
+    connectBtn.onclick = async () => {
+      status.textContent = "Connecting...";
+      if (window.ethereum) {
+        provider = window.ethereum;
+        web3 = new Web3(provider);
+        try {
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          handleConnect();
+        } catch (err) {
+          status.textContent = "Connection denied";
+        }
+      } else {
+        provider = new WalletConnectProvider.default({
+          rpc: Object.fromEntries(Object.entries(chains).map(([id, c]) => [id, c.rpc])),
+          qrcode: true,
+        });
+        await provider.enable();
+        web3 = new Web3(provider);
+        handleConnect();
+      }
+    };
+
+    disconnectBtn.onclick = () => {
+      if (provider.disconnect) provider.disconnect();
+      resetUI();
+    };
+
+    function handleConnect() {
+      web3.eth.getAccounts().then(accounts => {
+        userAddress = accounts[0];
+        addressEl.textContent = userAddress;
+        updateChainAndBalance();
+        status.textContent = "Connected";
+        connectBtn.style.display = 'none';
+        disconnectBtn.style.display = 'block';
+        accountInfo.style.display = 'block';
+      });
+      setupEventListeners();
+    }
+
+    async function updateChainAndBalance() {
+      currentChainId = await web3.eth.getChainId();
+      const config = chains[currentChainId] || { name: 'Unknown', symbol: 'ETH' };
+      chainIdEl.textContent = currentChainId;
+      chainNameEl.textContent = config.name;
+      symbolEl.textContent = config.symbol;
+
+      const balanceWei = await web3.eth.getBalance(userAddress);
+      const balance = web3.utils.fromWei(balanceWei, 'ether');
+      balanceEl.textContent = parseFloat(balance).toFixed(4);
+    }
+
+    function setupEventListeners() {
+      if (window.ethereum) {
+        window.ethereum.on('accountsChanged', (accounts) => {
+          userAddress = accounts[0];
+          addressEl.textContent = userAddress;
+          updateChainAndBalance();
+        });
+        window.ethereum.on('chainChanged', () => location.reload());
+      }
+      if (provider.on) {
+        provider.on("accountsChanged", (accounts) => {
+          userAddress = accounts[0];
+          addressEl.textContent = userAddress;
+          updateChainAndBalance();
+        });
+        provider.on("chainChanged", () => location.reload());
+      }
+    }
+
+    function resetUI() {
+      status.textContent = "Not connected";
+      connectBtn.style.display = 'block';
+      disconnectBtn.style.display = 'none';
+      accountInfo.style.display = 'none';
+      txList.innerHTML = '';
+      userAddress = null;
+    }
+
+    // Load last 10 transactions using explorer API
+    loadTxBtn.onclick = async () => {
+      txList.innerHTML = '<li>Loading...</li>';
+      const config = chains[currentChainId];
+      if (!config) return (txList.innerHTML = '<li>Unsupported chain</li>');
+
+      const apiUrl = `${config.explorer}?module=account&action=txlist&address=${userAddress}&sort=desc&page=1&offset=10&apikey=YourApiKeyToken`; // Replace with your free Etherscan-like API key if rate-limited
+      try {
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+        txList.innerHTML = '';
+        if (data.status === '1' && data.result.length > 0) {
+          data.result.forEach(tx => {
+            const li = document.createElement('li');
+            li.className = 'tx-item';
+            li.innerHTML = `Tx: <a href="${config.explorer.replace('api.', '')}/tx/${tx.hash}" target="_blank">${tx.hash.slice(0,10)}...</a><br>Value: ${web3.utils.fromWei(tx.value, 'ether')} ${config.symbol}<br>From: ${tx.from.slice(0,10)}...`;
+            txList.appendChild(li);
+          });
+        } else {
+          txList.innerHTML = '<li>No transactions found</li>';
+        }
+      } catch (err) {
+        txList.innerHTML = '<li>Error loading transactions. Try a free API key.</li>';
+      }
+    };
+
+    // Auto-connect if possible
+    if (window.ethereum && window.ethereum.selectedAddress) {
+      connectBtn.click();
+    }
+  </script>
+</body>
+</html>
