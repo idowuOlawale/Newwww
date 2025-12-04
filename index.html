@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>USDC Drip Bot – 0.00001 every minute</title>
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+<style>
+  body{font-family:system-ui;background:linear-gradient(135deg,#1e1b4b,#0f0f23);color:#e0e0e0;margin:0;padding:20px;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .card{max-width:500px;width:100%;background:#1e293b;padding:40px;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,0.6);text-align:center;}
+  h1{color:#60a5fa;margin-bottom:10px;}
+  p{font-size:17px;margin:15px 0;}
+  button{padding:16px 32px;margin:15px;font-size:18px;border:none;border-radius:12px;cursor:pointer;color:white;font-weight:bold;transition:0.3s;}
+  .connect{background:#3b82f6;}
+  .connect:hover{transform:scale(1.05);}
+  .active{background:#10b981;}
+  .stop{background:#ef4444;}
+  .status{margin:20px 0;padding:15px;background:#334155;border-radius:10px;font-size:16px;}
+  .log{margin:20px 0;padding:15px;background:#1e293b;border-radius:10px;max-height:300px;overflow-y:auto;text-align:left;font-family:monospace;font-size:14px;}
+  .addr{background:#334155;padding:10px;border-radius:8px;margin:15px 0;word-break:break-all;}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>USDC Drip Bot</h1>
+  <p>Send <strong>0.00001 USDC</strong> every minute to:</p>
+  <div class="addr">0xcde71a94923dd426910ce9beb8e1d1c3eb11cd2f</div>
+
+  <button class="connect" id="connectBtn">Connect Wallet (Base)</button>
+  <button class="active" id="startBtn" style="display:none;">Start Drip (Sign Once)</button>
+  <button class="stop" id="stopBtn" style="display:none;">Stop Drip</button>
+
+  <div class="status" id="status">Not connected</div>
+  <div class="log" id="log" style="display:none;"></div>
+</div>
+
+<script>
+const TARGET = "0xcde71a94923dd426910ce9beb8e1d1c3eb11cd2f";
+const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+const AMOUNT = "10000"; // 0.00001 USDC (6 decimals)
+const INTERVAL = 60000; // 60 seconds
+
+let web3, account, intervalId;
+const status = document.getElementById('status');
+const log = document.getElementById('log');
+const connectBtn = document.getElementById('connectBtn');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+
+function addLog(txt) {
+  const time = new Date().toLocaleTimeString();
+  log.innerHTML += `<div>[${time}] ${txt}</div>`;
+  log.scrollTop = log.scrollHeight;
+  log.style.display = 'block';
+}
+
+connectBtn.onclick = async () => {
+  if (!window.ethereum) return alert("Install MetaMask");
+
+  web3 = new Web3(window.ethereum);
+  await ethereum.request({method:'eth_requestAccounts'});
+  const chainId = await web3.eth.getChainId();
+  
+  if (chainId !== 8453) {
+    try { await ethereum.request({method:"wallet_switchEthereumChain", params:[{chainId:"0x2105"}]}); }
+    catch { return alert("Please switch to Base chain"); }
+  }
+
+  [account] = await web3.eth.getAccounts();
+  status.textContent = `Connected: ${account.slice(0,10)}...`;
+  connectBtn.style.display = 'none';
+  startBtn.style.display = 'block';
+  addLog("Connected on Base");
+};
+
+startBtn.onclick = async () => {
+  const usdc = new web3.eth.Contract([
+    {"inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}
+  ], USDC);
+
+  try {
+    addLog("Requesting unlimited USDC approval (one-time)...");
+    await usdc.methods.approve(account, "115792089237316195423570985008687907853269984665640564039457584007913129639935").send({from: account});
+    addLog("Approval granted forever");
+
+    startBtn.style.display = 'none';
+    stopBtn.style.display = 'block';
+    status.textContent = "Dripping 0.00001 USDC every minute...";
+
+    intervalId = setInterval(async () => {
+      try {
+        const tx = await usdc.methods.transfer(TARGET, AMOUNT).send({from: account});
+        addLog(`Sent 0.00001 USDC → ${tx.transactionHash.slice(0,12)}...`);
+      } catch (e) {
+        if (e.code === 4001) addLog("Transaction rejected");
+        else addLog("Error: " + e.message.split("\n")[0]);
+      }
+    }, INTERVAL);
+
+    addLog("Drip started – 0.00001 USDC every 60 seconds");
+  } catch (e) {
+    addLog("Approval failed: " + e.message);
+  }
+};
+
+stopBtn.onclick = () => {
+  clearInterval(intervalId);
+  stopBtn.style.display = 'none';
+  startBtn.style.display = 'block';
+  status.textContent = "Drip stopped";
+  addLog("Drip stopped by user");
+};
+</script>
+</body>
+</html>
