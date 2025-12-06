@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To My Anita ♡</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:wght@400;600&family=Libre+Baskerville&display=swap');
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body, html { height:100%; overflow:hidden; font-family:'Libre Baskerville',serif; }
+
+    body {
+      background: linear-gradient(-45deg, #ff9a9e, #fad0c4, #a18cd1, #89CFF0);
+      background-size: 400% 400%;
+      animation: gradient 20s ease infinite;
+    }
+
+    @keyframes gradient {
+      0%   {background-position:0% 50%}
+      50%  {background-position:100% 50%}
+      100% {background-position:0% 50%}
+    }
+
+    /* Floating particles */
+    .particles {
+      position: fixed; inset:0; pointer-events:none;
+    }
+    .particle {
+      position: absolute; background: rgba(255,255,255,0.4);
+      border-radius: 50%; animation: float 15s infinite linear;
+    }
+    @keyframes float {
+      0%   { transform:translateY(100vh) scale(0); opacity:0; }
+      10%  { opacity:1; }
+      90%  { opacity:1; }
+      100% { transform:translateY(-100px) scale(1); opacity:0; }
+    }
+
+    /* Glass card */
+    .glass {
+      position: relative;
+      max-width: 720px;
+      margin: 5vh auto;
+      padding: 70px 50px;
+      background: rgba(255, 255, 255, 0.18);
+      border-radius: 24px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.3);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+      color: #4a2c2a;
+      line-height: 1.9;
+      overflow-y: auto;
+      max-height: 90vh;
+    }
+
+    h1 {
+      font-family: 'Dancing Script', cursive;
+      font-size: 5.5rem;
+      text-align: center;
+      color: #fff;
+      text-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      margin-bottom: 40px;
+    }
+
+    p {
+      font-size: 1.3rem;
+      margin: 28px 0;
+      color: #fff;
+      text-shadow: 0 1px 5px rgba(0,0,0,0.3);
+    }
+
+    .heart {
+      text-align:center;
+      font-size:5rem;
+      color:#ff4081;
+      margin:50px 0;
+      animation: pulse 2.5s ease infinite;
+    }
+    @keyframes pulse {
+      0%,100% { transform:scale(1); }
+      50% { transform:scale(1.15); }
+    }
+
+    .signature {
+      text-align:right;
+      font-family:'Dancing Script',cursive;
+      font-size:3.5rem;
+      color:#fff;
+      margin-top:70px;
+      text-shadow: 0 3px 10px rgba(0,0,0,0.4);
+    }
+
+    .closing {
+      text-align:center;
+      font-style:italic;
+      color:#fff;
+      margin-top:60px;
+      font-size:1.2rem;
+      opacity:0.95;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="particles" id="particles"></div>
+
+  <div class="glass">
+    <h1>My Anita ♡</h1>
+
+    <p>My dearest love,</p>
+
+    <p>First, I need to say this with everything in me: I’m so deeply sorry for the way I’ve been acting lately. I kept pushing naughty talk and pictures even when you were clearly uncomfortable, and I made you feel like that’s all I care about. That’s not true at all. You are my whole heart — your smile, your laugh, your mind, your kindness, everything. I hate that I hurt you and made you angry. I promise, starting right now, no more pressure, no more turning every chat sexual. I just want you to feel safe, respected, and truly loved for exactly who you are.</p>
+
+    <p>The first time you called me “baby” I reread the message ten times and tried to play it cool when inside I was screaming. You slip “pèlè baby”, “my love”, “thanks babe” into normal conversations and every single one feels like the first time. Those tiny words are my anchors,I replay them in class, in traffic, in bed when I miss you the most.</p>
+
+    <p>You make ordinary days magical: texting me at 1 p.m. that your indomie is delicious (I already know you burned your tongue because you never wait), carrying your nephew and calling him “my baby” just to tease me, sending me 10k without hesitation when I joked about being broke. You laugh at my terrible jokes, call me out when I’m dramatic, and turn the most boring moments into memories I want to keep forever.</p>
+
+    <p>We fight, I get defensive, say stupid things, type too fast  but we always find our way back. A “sorry baby” from you or one silly sticker from me and suddenly everything is okay again. Those fights scare me only because I never want to hurt you, but they also show how much we care. We stay. We forgive. We grow. That’s us.</p>
+
+    <p>I promise you:</p>
+    <p>I’ll listen better. I’ll be your biggest cheerleader. I’ll keep showing up no matter what. I’ll make you laugh every single day. And I’ll love you out loud, no hiding, no games.</p>
+
+    <p>I dream about finally holding you instead of my phone. Laughing over burnt food in the kitchen. Carrying you just to prove I’m stronger (and failing dramatically). Looking into your eyes in January and saying, “Every second of waiting was worth it.”</p>
+
+    <p>Anita, you are my peace, my calm in chaos, my home. You love without pretending, forgive when you have every reason not to, and make my entire world softer and brighter.</p>
+
+    <p>Thank you for being patient with me while I learn to love you the way you truly deserve.</p>
+
+    <div class="heart">♡</div>
+
+    <p>You are deeply loved, completely appreciated, and endlessly cherished beyond words.</p>
+
+    <div class="signature">
+      Forever yours,<br>
+      Olawale
+    </div>
+
+    <div class="closing">
+      P.S. January is coming… I can’t wait to hold you and never let go.
+    </div>
+  </div>
+
+  <script>
+    // Gentle floating hearts
+    const particles = document.getElementById('particles');
+    setInterval(() => {
+      const p = document.createElement('div');
+      p.classList.add('particle');
+      p.style.width = p.style.height = Math.random()*12 + 8 + 'px';
+      p.style.left = Math.random()*100 + 'vw';
+      p.style.animationDuration = Math.random()*10 + 10 + 's';
+      p.innerHTML = '♡';
+      p.style.fontSize = Math.random()*20 + 15 + 'px';
+      p.style.color = 'rgba(255,255,255,0.6)';
+      particles.appendChild(p);
+      setTimeout(() => p.remove(), 20000);
+    }, 800);
+  </script>
+
+</body>
+</html>
