@@ -6,169 +6,157 @@
     <title>Campus Pay - LASUSTECH</title>
     <style>
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(135deg, #0f4c3a, #1e8c6b);
-            color: white;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e293b, #4c1d95);
+            color: #e2e8f0;
             margin: 0;
             padding: 0;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
+            background-attachment: fixed;
         }
         header {
             text-align: center;
-            padding: 30px 20px;
-            width: 100%;
-            background: rgba(0,0,0,0.15);
+            padding: 40px 20px;
         }
-        .logos {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 30px;
+        .logo {
+            height: 80px;
             margin-bottom: 20px;
         }
-        .logos img {
-            height: 70px;
-            border-radius: 10px;
-        }
         h1 {
-            margin: 10px 0;
-            font-size: 3em;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            font-size: 3.5em;
+            margin: 0;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        p.subtitle {
+        .subtitle {
             font-size: 1.4em;
             opacity: 0.9;
-            max-width: 800px;
+            max-width: 700px;
         }
         main {
-            max-width: 700px;
+            max-width: 600px;
             width: 90%;
-            background: rgba(255,255,255,0.12);
-            backdrop-filter: blur(15px);
-            border-radius: 25px;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
             padding: 40px;
-            margin: 30px 20px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+            margin: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .connect-section {
             text-align: center;
         }
-        .hero-img {
-            width: 100%;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            margin-bottom: 30px;
-        }
-        #balance {
-            font-size: 1.5em;
-            margin: 20px 0;
-            padding: 15px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 15px;
-        }
         button {
-            padding: 15px 30px;
+            padding: 16px 32px;
             font-size: 1.2em;
-            background: #00e0a0;
-            color: black;
+            background: linear-gradient(to right, #3b82f6, #8b5cf6);
+            color: white;
             border: none;
             border-radius: 50px;
             cursor: pointer;
             transition: 0.3s;
-            margin: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 20px rgba(59,130,246,0.3);
         }
         button:hover {
-            background: #00ffc4;
-            transform: translateY(-3px);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(59,130,246,0.4);
         }
         input {
-            width: 90%;
-            padding: 15px;
+            width: 100%;
+            padding: 16px;
             margin: 20px 0;
-            border-radius: 15px;
+            border-radius: 16px;
             border: none;
-            font-size: 1.1em;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
             color: white;
+            font-size: 1.1em;
         }
-        input::placeholder { color: rgba(255,255,255,0.7); }
-        .modal {
+        input::placeholder { color: rgba(255,255,255,0.6); }
+        .info {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 16px;
+            margin: 20px 0;
+            font-size: 1.2em;
+        }
+        #walletModal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             justify-content: center;
             align-items: center;
             z-index: 100;
         }
         .modal-content {
-            background: white;
-            color: black;
-            padding: 30px;
-            border-radius: 20px;
+            background: #1e293b;
+            padding: 40px;
+            border-radius: 24px;
             width: 90%;
             max-width: 500px;
             text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
         }
         .wallet-option {
             display: flex;
             align-items: center;
             gap: 20px;
-            background: #f0f0f0;
+            background: rgba(255,255,255,0.05);
             padding: 20px;
             margin: 15px 0;
-            border-radius: 15px;
+            border-radius: 16px;
             cursor: pointer;
             transition: 0.3s;
         }
         .wallet-option:hover {
-            background: #e0e0e0;
+            background: rgba(255,255,255,0.1);
             transform: scale(1.03);
         }
         .wallet-option img {
             height: 50px;
-            border-radius: 10px;
+            border-radius: 12px;
         }
         #status {
             margin-top: 30px;
-            font-weight: bold;
             font-size: 1.2em;
             min-height: 30px;
         }
-        .error { color: #ff6b6b; }
+        .error { color: #f87171; }
         footer {
             margin-top: auto;
-            padding: 20px;
-            opacity: 0.8;
+            padding: 30px;
+            opacity: 0.7;
+            font-size: 0.9em;
         }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     </style>
 </head>
 <body>
     <header>
-        <div class="logos">
-            <img src="https://lasustech.edu.ng/lasustech_gate.jpg" alt="LASUSTECH">
-            <img src="https://mms.businesswire.com/media/20231212525990/en/1839000/5/Sui_Logo_DarkBlue.jpg" alt="Sui Logo">
-        </div>
+        <img class="logo" src="https://mms.businesswire.com/media/20231212525990/en/1839000/5/Sui_Logo_White.jpg" alt="Sui Logo">
         <h1>Campus Pay</h1>
-        <p class="subtitle">Seamless, Secure Payments Across LASUSTECH Campus Powered by Sui Blockchain</p>
+        <p class="subtitle">Instant, Secure Payments on LASUSTECH Campus – Powered by Sui Blockchain</p>
     </header>
 
     <main>
-        <img class="hero-img" src="https://lasustech.edu.ng/environmentals_.jpg" alt="LASUSTECH Campus">
+        <div id="accountInfo" class="info" style="display:none;"></div>
+        <div id="balance" class="info" style="display:none;"></div>
 
-        <p id="accountInfo" style="font-size:1.3em; margin:30px 0;"></p>
-        <p id="balance" style="display:none;"></p>
-
-        <button id="connectButton">Connect Wallet</button>
+        <div id="connectSection" class="connect-section">
+            <button id="connectButton">Connect Wallet</button>
+        </div>
 
         <div id="paymentForm" style="display:none; margin-top:40px;">
             <label>Recipient Address</label>
             <input id="recipient" type="text" placeholder="0x...">
 
             <label>Amount (SUI)</label>
-            <input id="amount" type="number" step="0.001" min="0.001" placeholder="e.g. 1.5">
+            <input id="amount" type="number" step="0.001" min="0.001" placeholder="e.g. 1.0">
 
             <button id="payButton">Send Payment</button>
         </div>
@@ -176,16 +164,16 @@
         <p id="status"></p>
     </main>
 
-    <div id="walletModal" class="modal">
+    <div id="walletModal">
         <div class="modal-content">
-            <h2>Select Wallet</h2>
+            <h2>Select Your Wallet</h2>
             <div id="walletList"></div>
-            <p style="margin-top:30px;">No wallet? Install <a href="https://chromewebstore.google.com/detail/slush-%E2%80%94-a-sui-wallet/opcgpfmipidbgpenhmajoajpbobppdil" target="_blank">Slush</a> or <a href="https://chromewebstore.google.com/detail/okx-wallet/mcohilncbfahbmgdjkbpemcciiolgcge" target="_blank">OKX Wallet</a></p>
+            <p style="margin-top:30px;">Don't have one? Get <a href="https://slush.app" target="_blank" style="color:#60a5fa;">Slush</a> or <a href="https://okx.com/web3" target="_blank" style="color:#60a5fa;">OKX Wallet</a></p>
             <button onclick="document.getElementById('walletModal').style.display='none'">Close</button>
         </div>
     </div>
 
-    <footer>© 2025 Campus Pay • Sui Testnet Demo • Recommended: Slush or OKX Wallet</footer>
+    <footer>Testnet Demo • SUI Hackathon Project • Use Slush or OKX Wallet</footer>
 
     <script type="module">
         import { getFullnodeUrl, SuiClient } from 'https://unpkg.com/@mysten/sui@latest/client?module';
@@ -199,35 +187,46 @@
 
         const client = new SuiClient({ url: getFullnodeUrl('testnet') });
 
-        const updateWallets = () => {
+        const updateWalletsAndConnect = () => {
             wallets = registry.get().filter(w => w.chains.some(c => c.startsWith('sui:')));
-            checkAutoConnect();
+            checkForConnectedAccounts();
         };
 
-        registry.on('register', updateWallets);
-        registry.on('unregister', updateWallets);
-        updateWallets();
-
-        async function checkAutoConnect() {
+        const checkForConnectedAccounts = () => {
             for (const wallet of wallets) {
-                const accounts = wallet.accounts.filter(a => a.chains.some(c => c.startsWith('sui:')));
-                if (accounts.length > 0) {
+                const suiAccounts = wallet.accounts.filter(a => a.chains.some(c => c.startsWith('sui:')));
+                if (suiAccounts.length > 0) {
                     currentWallet = wallet;
-                    currentAccount = accounts[0];
+                    currentAccount = suiAccounts[0];
                     showConnected();
-                    await showBalance();
-                    return;
+                    loadBalance();
+                    return true;
                 }
             }
-            // No auto-connect
-            document.getElementById('connectButton').style.display = 'block';
-        }
+            return false;
+        };
+
+        registry.on('register', updateWalletsAndConnect);
+        registry.on('unregister', updateWalletsAndConnect);
+        updateWalletsAndConnect(); // Initial check
 
         function showConnected() {
-            document.getElementById('accountInfo').innerText = `Connected with ${currentWallet.name}: ${currentAccount.address.slice(0,6)}...${currentAccount.address.slice(-4)}`;
-            document.getElementById('connectButton').style.display = 'none';
+            document.getElementById('accountInfo').innerText = `Connected: ${currentAccount.address.slice(0,6)}...${currentAccount.address.slice(-4)} (${currentWallet.name})`;
+            document.getElementById('accountInfo').style.display = 'block';
+            document.getElementById('connectSection').style.display = 'none';
             document.getElementById('paymentForm').style.display = 'block';
-            document.getElementById('balance').style.display = 'block';
+        }
+
+        async function loadBalance() {
+            try {
+                const { totalBalance } = await client.getBalance({ owner: currentAccount.address });
+                const sui = (BigInt(totalBalance) / 1000000000n).toString() + '.' + (BigInt(totalBalance) % 1000000000n).toString().padStart(9, '0').slice(0,3);
+                document.getElementById('balance').innerText = `Balance: ${sui} SUI`;
+                document.getElementById('balance').style.display = 'block';
+            } catch (e) {
+                document.getElementById('balance').innerText = 'Balance: Error';
+                document.getElementById('balance').style.display = 'block';
+            }
         }
 
         document.getElementById('connectButton').onclick = () => {
@@ -235,12 +234,21 @@
             const list = document.getElementById('walletList');
             list.innerHTML = '';
             if (wallets.length === 0) {
-                list.innerHTML = '<p>No Sui wallets detected. Please install one.</p>';
+                list.innerHTML = '<p>No Sui wallets detected. Install Slush or OKX.</p>';
             } else {
                 wallets.forEach(wallet => {
                     const div = document.createElement('div');
                     div.className = 'wallet-option';
-                    div.onclick = () => connectToWallet(wallet);
+                    div.onclick = async () => {
+                        try {
+                            await wallet.features['standard:connect'].connect();
+                            updateWalletsAndConnect();
+                            modal.style.display = 'none';
+                            setStatus('Connected!');
+                        } catch (err) {
+                            setStatus('Connection rejected or failed.', true);
+                        }
+                    };
                     const img = document.createElement('img');
                     img.src = wallet.icon;
                     img.alt = wallet.name;
@@ -254,43 +262,21 @@
             modal.style.display = 'flex';
         };
 
-        async function connectToWallet(wallet) {
-            try {
-                await wallet.features['standard:connect'].connect();
-                updateWallets(); // Refresh to catch new accounts
-                document.getElementById('walletModal').style.display = 'none';
-                setStatus('Connected successfully!');
-            } catch (e) {
-                setStatus(`Connection error: ${e.message}`, true);
-            }
-        }
-
-        async function showBalance() {
-            try {
-                const { totalBalance } = await client.getBalance({ owner: currentAccount.address });
-                const suiBalance = (BigInt(totalBalance) / 1000000000n).toString();
-                document.getElementById('balance').innerText = `Your Balance: ${suiBalance} SUI`;
-            } catch (e) {
-                document.getElementById('balance').innerText = 'Balance: Error loading';
-            }
-        }
-
         function setStatus(msg, error = false) {
-            const status = document.getElementById('status');
-            status.innerText = msg;
-            status.classList.toggle('error', error);
+            const el = document.getElementById('status');
+            el.innerText = msg;
+            el.classList.toggle('error', error);
         }
 
         document.getElementById('payButton').onclick = async () => {
             const recipient = document.getElementById('recipient').value.trim();
-            const amount = parseFloat(document.getElementById('amount').value);
+            const amountStr = document.getElementById('amount').value;
+            if (!recipient || !amountStr) return setStatus('Fill all fields', true);
 
-            if (!recipient || !amount || amount <= 0) {
-                setStatus('Enter valid recipient and amount', true);
-                return;
-            }
+            const amount = parseFloat(amountStr);
+            if (isNaN(amount) || amount <= 0) return setStatus('Invalid amount', true);
 
-            setStatus('Preparing transaction...');
+            setStatus('Signing transaction...');
 
             try {
                 const tx = new Transaction();
@@ -307,16 +293,16 @@
                     chain: 'sui:testnet'
                 });
 
-                const result = await client.executeTransactionBlock({
+                const resp = await client.executeTransactionBlock({
                     transactionBlock: transactionBlockBytes,
                     signature,
                     options: { showEffects: true }
                 });
 
-                setStatus(`Payment Sent! Digest: ${result.digest}`);
-                await showBalance();
+                setStatus(`Success! Digest: ${resp.digest.substring(0,12)}...`);
+                loadBalance();
             } catch (e) {
-                setStatus(`Error: ${e.message}`, true);
+                setStatus(`Error: ${e.message || 'Failed'}`, true);
             }
         };
     </script>
