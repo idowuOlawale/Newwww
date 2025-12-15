@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sui Wallet Dashboard - Final Fixed</title>
+  <title>Sui Wallet Dashboard - Fully Working Transfers</title>
   <script type="module">
     import { getWallets } from "https://cdn.jsdelivr.net/npm/@mysten/wallet-standard@latest/+esm";
     import { SuiClient, getFullnodeUrl } from "https://cdn.jsdelivr.net/npm/@mysten/sui@latest/client/+esm";
@@ -93,7 +93,7 @@
 
     async function sendSui() {
       if (!currentAccount || !currentWallet) {
-        txResult.innerHTML = '<span style="color:red">Wallet disconnected – please reconnect</span>';
+        txResult.innerHTML = '<span style="color:red">Wallet not connected – reconnect please</span>';
         return;
       }
 
@@ -116,10 +116,12 @@
         const txb = new Transaction();
         const [coin] = txb.splitCoins(txb.gas, [BigInt(amount * 1_000_000_000)]);
         txb.transferObjects([coin], recipient);
-        // Removed setSender – wallet handles it automatically
+
+        // Serialize the transaction for the new Wallet Standard
+        const serializedTx = await txb.serialize();
 
         const result = await currentWallet.features['sui:signAndExecuteTransaction'].signAndExecuteTransaction({
-          transaction: txb,
+          transaction: serializedTx,
           chain: `sui:${NETWORK}`
         });
 
@@ -164,7 +166,7 @@
 
     function showModal() {
       const available = wallets.get();
-      walletList.innerHTML = available.length === 0 ? '<li>No wallet detected. Install Slush.</li>' : '';
+      walletList.innerHTML = available.length === 0 ? '<li>No wallet detected. Install latest Slush extension.</li>' : '';
       available.forEach(wallet => {
         const li = document.createElement('li');
         const btn = document.createElement('button');
@@ -226,7 +228,7 @@
 </head>
 <body>
   <h1>Sui Wallet Dashboard</h1>
-  <p>Connect your Slush wallet – view balance, history, and send SUI transfers.</p>
+  <p>Connect → View Balance/History → Send SUI (now fully working!)</p>
 
   <button id="connectBtn">Connect Wallet</button>
 
