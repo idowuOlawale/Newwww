@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sui Wallet Dashboard - Campus Hackathon Entry</title>
+  <title>Sui Wallet Dashboard - Fixed Transfers</title>
   <script type="module">
     import { getWallets } from "https://cdn.jsdelivr.net/npm/@mysten/wallet-standard@latest/+esm";
     import { SuiClient, getFullnodeUrl } from "https://cdn.jsdelivr.net/npm/@mysten/sui@latest/client/+esm";
     import { Transaction } from "https://cdn.jsdelivr.net/npm/@mysten/sui@latest/transactions/+esm";
 
-    const NETWORK = 'testnet'; // Change to 'mainnet' for production
+    const NETWORK = 'testnet'; // Change to 'mainnet' if needed
     const client = new SuiClient({ url: getFullnodeUrl(NETWORK) });
 
     const wallets = getWallets();
@@ -34,14 +34,14 @@
     const txResult = document.getElementById('txResult');
 
     async function updateUI() {
-      if (currentAccount) {
+      if (currentAccount && currentAccount.address) {
         addressEl.textContent = currentAccount.address.slice(0, 6) + '...' + currentAccount.address.slice(-4);
         connectBtn.textContent = 'Disconnect';
         statusEl.textContent = `Connected via ${currentWallet.name}`;
         transferSection.style.display = 'block';
         txSection.style.display = 'block';
 
-        // Update balance
+        // Balance
         try {
           const { totalBalance } = await client.getBalance({ owner: currentAccount.address });
           balanceEl.textContent = `${(BigInt(totalBalance) / BigInt(1_000_000_000)).toFixed(4)} SUI`;
@@ -49,7 +49,7 @@
           balanceEl.textContent = 'Error';
         }
 
-        // Load transactions
+        // Transactions
         await loadTransactions();
       } else {
         addressEl.textContent = '-';
@@ -64,6 +64,7 @@
     }
 
     async function loadTransactions() {
+      if (!currentAccount?.address) return;
       txList.innerHTML = '<li>Loading transactions...</li>';
       try {
         const txns = await client.queryTransactionBlocks({
@@ -94,6 +95,11 @@
     }
 
     async function sendSui() {
+      if (!currentAccount || !currentAccount.address) {
+        txResult.innerHTML = '<span style="color:red">Not connected – please reconnect wallet</span>';
+        return;
+      }
+
       const recipient = recipientInput.value.trim();
       const amountStr = amountInput.value.trim();
       if (!recipient || !amountStr) {
@@ -124,12 +130,13 @@
           const link = `https://suiscan.xyz/${NETWORK}/tx/${result.digest}`;
           txResult.innerHTML = `<span style="color:green">Success! <a href="${link}" target="_blank">View on Suiscan</a></span>`;
           recipientInput.value = ''; amountInput.value = '';
-          updateUI();
+          updateUI(); // Refresh everything
         } else {
-          txResult.innerHTML = '<span style="color:red">Transaction failed</span>';
+          txResult.innerHTML = `<span style="color:red">Failed: ${result.effects?.status?.error || 'Unknown'}</span>`;
         }
       } catch (err) {
-        txResult.innerHTML = `<span style="color:red">Error/Rejected: ${err.message || 'Unknown'}</span>`;
+        txResult.innerHTML = `<span style="color:red">Error/Rejected: ${err.message || 'Try again'}</span>`;
+        console.error(err);
       } finally {
         sendBtn.disabled = false;
       }
@@ -177,7 +184,6 @@
     window.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
     sendBtn.onclick = sendSui;
 
-    // Wallet change listener & auto-connect
     wallets.on('change', () => {
       const all = wallets.get();
       let found = false;
@@ -223,7 +229,7 @@
 </head>
 <body>
   <h1>Sui Wallet Dashboard</h1>
-  <p>A clean, user-friendly Sui dApp for connecting wallets, viewing balance/history, and sending SUI transfers.<br>Built for the Sui Campus Hackathon.</p>
+  <p>Connect, view balance/history, and send SUI – perfect for the Campus Hackathon!</p>
 
   <button id="connectBtn">Connect Wallet</button>
 
@@ -246,8 +252,6 @@
     <h2>Recent Transactions</h2>
     <ul id="txList"></ul>
   </div>
-
-  <p><small>Uses official Sui Wallet Standard • Works with Slush (official Sui wallet)</small></p>
 
   <div id="walletModal" class="modal">
     <div class="modal-content">
