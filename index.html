@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            background: linear-gradient(135deg, #0f4c3a, #1e8c6b);
             color: white;
             margin: 0;
             padding: 0;
@@ -18,132 +18,157 @@
         }
         header {
             text-align: center;
-            padding: 20px;
+            padding: 30px 20px;
             width: 100%;
-            background: rgba(0,0,0,0.2);
+            background: rgba(0,0,0,0.15);
         }
         .logos {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 20px;
-            margin-bottom: 10px;
+            gap: 30px;
+            margin-bottom: 20px;
         }
         .logos img {
-            height: 60px;
+            height: 70px;
+            border-radius: 10px;
         }
         h1 {
             margin: 10px 0;
-            font-size: 2.5em;
+            font-size: 3em;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
         p.subtitle {
-            font-size: 1.2em;
+            font-size: 1.4em;
             opacity: 0.9;
+            max-width: 800px;
         }
         main {
-            max-width: 600px;
+            max-width: 700px;
             width: 90%;
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            margin: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(15px);
+            border-radius: 25px;
+            padding: 40px;
+            margin: 30px 20px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
             text-align: center;
         }
         .hero-img {
             width: 100%;
-            max-height: 300px;
-            object-fit: cover;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+        #balance {
+            font-size: 1.5em;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
             border-radius: 15px;
-            margin-bottom: 20px;
         }
         button {
-            padding: 12px 24px;
-            font-size: 1.1em;
-            background: #00d1ff;
-            color: white;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background: #00e0a0;
+            color: black;
             border: none;
             border-radius: 50px;
             cursor: pointer;
             transition: 0.3s;
-            margin: 10px;
+            margin: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         button:hover {
-            background: #00a8cc;
-            transform: scale(1.05);
-        }
-        button:disabled {
-            background: gray;
-            cursor: not-allowed;
+            background: #00ffc4;
+            transform: translateY(-3px);
         }
         input {
             width: 90%;
-            padding: 12px;
-            margin: 15px 0;
-            border-radius: 10px;
-            border: none;
-            font-size: 1em;
-        }
-        #walletList {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            padding: 15px;
             margin: 20px 0;
+            border-radius: 15px;
+            border: none;
+            font-size: 1.1em;
+            background: rgba(255,255,255,0.2);
+            color: white;
         }
-        .wallet-btn {
+        input::placeholder { color: rgba(255,255,255,0.7); }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background: white;
+            color: black;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .wallet-option {
             display: flex;
             align-items: center;
-            gap: 15px;
-            background: rgba(255,255,255,0.2);
-            padding: 15px;
+            gap: 20px;
+            background: #f0f0f0;
+            padding: 20px;
+            margin: 15px 0;
             border-radius: 15px;
+            cursor: pointer;
+            transition: 0.3s;
         }
-        .wallet-btn img {
-            height: 40px;
-            border-radius: 8px;
+        .wallet-option:hover {
+            background: #e0e0e0;
+            transform: scale(1.03);
+        }
+        .wallet-option img {
+            height: 50px;
+            border-radius: 10px;
         }
         #status {
-            margin-top: 20px;
+            margin-top: 30px;
             font-weight: bold;
-            min-height: 24px;
+            font-size: 1.2em;
+            min-height: 30px;
         }
         .error { color: #ff6b6b; }
         footer {
             margin-top: auto;
             padding: 20px;
-            opacity: 0.7;
-            font-size: 0.9em;
+            opacity: 0.8;
         }
     </style>
 </head>
 <body>
     <header>
         <div class="logos">
-            <img src="https://www.publicprocurement.ng/wp-content/uploads/2024/09/LASUTECH.jpeg" alt="LASUSTECH Logo">
+            <img src="https://lasustech.edu.ng/lasustech_gate.jpg" alt="LASUSTECH">
             <img src="https://mms.businesswire.com/media/20231212525990/en/1839000/5/Sui_Logo_DarkBlue.jpg" alt="Sui Logo">
         </div>
         <h1>Campus Pay</h1>
-        <p class="subtitle">Fast & Secure Payments on LASUSTECH Campus with Sui Blockchain</p>
+        <p class="subtitle">Seamless, Secure Payments Across LASUSTECH Campus Powered by Sui Blockchain</p>
     </header>
 
     <main>
-        <img class="hero-img" src="https://a-us.storyblok.com/f/1021711/1120x680/533a80c66e/campus-payments-phone.webp" alt="Campus Payment Illustration">
+        <img class="hero-img" src="https://lasustech.edu.ng/environmentals_.jpg" alt="LASUSTECH Campus">
 
-        <p id="address" style="font-size:1.2em; margin:20px 0;"></p>
+        <p id="accountInfo" style="font-size:1.3em; margin:30px 0;"></p>
+        <p id="balance" style="display:none;"></p>
 
-        <div id="connectSection">
-            <button id="connectButton">Connect Wallet</button>
-            <div id="walletList" style="display:none;"></div>
-            <p id="noWallet" style="display:none; color:#ff6b6b;">No Sui wallet detected. Install <a href="https://chromewebstore.google.com/detail/slush-%E2%80%94-a-sui-wallet/opcgpfmipidbgpenhmajoajpbobppdil" target="_blank" style="color:#00d1ff;">Slush</a> or <a href="https://chromewebstore.google.com/detail/okx-wallet/mcohilncbfahbmgdjkbpemcciiolgcge" target="_blank" style="color:#00d1ff;">OKX Wallet</a>.</p>
-        </div>
+        <button id="connectButton">Connect Wallet</button>
 
-        <div id="paymentForm" style="display:none;">
+        <div id="paymentForm" style="display:none; margin-top:40px;">
             <label>Recipient Address</label>
             <input id="recipient" type="text" placeholder="0x...">
 
             <label>Amount (SUI)</label>
-            <input id="amount" type="number" step="0.001" min="0.001" placeholder="e.g. 0.5">
+            <input id="amount" type="number" step="0.001" min="0.001" placeholder="e.g. 1.5">
 
             <button id="payButton">Send Payment</button>
         </div>
@@ -151,68 +176,102 @@
         <p id="status"></p>
     </main>
 
-    <footer>Powered by Sui • Testnet Demo for SUI Hackathon • Use Slush or OKX Wallet</footer>
+    <div id="walletModal" class="modal">
+        <div class="modal-content">
+            <h2>Select Wallet</h2>
+            <div id="walletList"></div>
+            <p style="margin-top:30px;">No wallet? Install <a href="https://chromewebstore.google.com/detail/slush-%E2%80%94-a-sui-wallet/opcgpfmipidbgpenhmajoajpbobppdil" target="_blank">Slush</a> or <a href="https://chromewebstore.google.com/detail/okx-wallet/mcohilncbfahbmgdjkbpemcciiolgcge" target="_blank">OKX Wallet</a></p>
+            <button onclick="document.getElementById('walletModal').style.display='none'">Close</button>
+        </div>
+    </div>
+
+    <footer>© 2025 Campus Pay • Sui Testnet Demo • Recommended: Slush or OKX Wallet</footer>
 
     <script type="module">
-        import { getFullnodeUrl } from 'https://unpkg.com/@mysten/sui@latest/client?module';
-        import { SuiClient } from 'https://unpkg.com/@mysten/sui@latest/client?module';
+        import { getFullnodeUrl, SuiClient } from 'https://unpkg.com/@mysten/sui@latest/client?module';
         import { Transaction } from 'https://unpkg.com/@mysten/sui@latest/transactions?module';
-        import { getWallets, Wallet } from 'https://unpkg.com/@wallet-standard/app@latest?module';
+        import { getWallets } from 'https://unpkg.com/@wallet-standard/app@latest?module';
 
-        const walletsRegistry = getWallets();
-        let availableWallets = [];
-
-        const updateWallets = () => {
-            availableWallets = walletsRegistry.get().filter(w => w.chains.some(c => c.startsWith('sui:')));
-            const walletList = document.getElementById('walletList');
-            const noWallet = document.getElementById('noWallet');
-            if (availableWallets.length === 0) {
-                walletList.style.display = 'none';
-                noWallet.style.display = 'block';
-            } else {
-                noWallet.style.display = 'none';
-                walletList.style.display = 'flex';
-                walletList.innerHTML = '';
-                availableWallets.forEach(wallet => {
-                    const btn = document.createElement('button');
-                    btn.className = 'wallet-btn';
-                    btn.onclick = () => connectWallet(wallet);
-                    const img = document.createElement('img');
-                    img.src = wallet.icon;
-                    img.alt = wallet.name;
-                    const span = document.createElement('span');
-                    span.textContent = wallet.name;
-                    btn.appendChild(img);
-                    btn.appendChild(span);
-                    walletList.appendChild(btn);
-                });
-            }
-        };
-
-        walletsRegistry.on('register', updateWallets);
-        walletsRegistry.on('unregister', updateWallets);
-        updateWallets();
-
-        document.getElementById('connectButton').onclick = () => {
-            updateWallets();
-            document.getElementById('connectSection').querySelector('button').style.display = availableWallets.length > 0 ? 'none' : 'block';
-        };
-
+        const registry = getWallets();
+        let wallets = [];
         let currentWallet = null;
         let currentAccount = null;
 
         const client = new SuiClient({ url: getFullnodeUrl('testnet') });
 
-        async function connectWallet(wallet) {
+        const updateWallets = () => {
+            wallets = registry.get().filter(w => w.chains.some(c => c.startsWith('sui:')));
+            checkAutoConnect();
+        };
+
+        registry.on('register', updateWallets);
+        registry.on('unregister', updateWallets);
+        updateWallets();
+
+        async function checkAutoConnect() {
+            for (const wallet of wallets) {
+                const accounts = wallet.accounts.filter(a => a.chains.some(c => c.startsWith('sui:')));
+                if (accounts.length > 0) {
+                    currentWallet = wallet;
+                    currentAccount = accounts[0];
+                    showConnected();
+                    await showBalance();
+                    return;
+                }
+            }
+            // No auto-connect
+            document.getElementById('connectButton').style.display = 'block';
+        }
+
+        function showConnected() {
+            document.getElementById('accountInfo').innerText = `Connected with ${currentWallet.name}: ${currentAccount.address.slice(0,6)}...${currentAccount.address.slice(-4)}`;
+            document.getElementById('connectButton').style.display = 'none';
+            document.getElementById('paymentForm').style.display = 'block';
+            document.getElementById('balance').style.display = 'block';
+        }
+
+        document.getElementById('connectButton').onclick = () => {
+            const modal = document.getElementById('walletModal');
+            const list = document.getElementById('walletList');
+            list.innerHTML = '';
+            if (wallets.length === 0) {
+                list.innerHTML = '<p>No Sui wallets detected. Please install one.</p>';
+            } else {
+                wallets.forEach(wallet => {
+                    const div = document.createElement('div');
+                    div.className = 'wallet-option';
+                    div.onclick = () => connectToWallet(wallet);
+                    const img = document.createElement('img');
+                    img.src = wallet.icon;
+                    img.alt = wallet.name;
+                    const span = document.createElement('span');
+                    span.textContent = wallet.name;
+                    div.appendChild(img);
+                    div.appendChild(span);
+                    list.appendChild(div);
+                });
+            }
+            modal.style.display = 'flex';
+        };
+
+        async function connectToWallet(wallet) {
             try {
-                const result = await wallet.features['standard:connect'].connect();
-                currentAccount = result.accounts[0];
-                currentWallet = wallet;
-                document.getElementById('address').innerText = `Connected: ${currentAccount.address.slice(0,6)}...${currentAccount.address.slice(-4)} (${wallet.name})`;
-                document.getElementById('paymentForm').style.display = 'block';
-                document.getElementById('connectSection').style.display = 'none';
+                await wallet.features['standard:connect'].connect();
+                updateWallets(); // Refresh to catch new accounts
+                document.getElementById('walletModal').style.display = 'none';
+                setStatus('Connected successfully!');
             } catch (e) {
-                setStatus(`Connection failed: ${e.message}`, true);
+                setStatus(`Connection error: ${e.message}`, true);
+            }
+        }
+
+        async function showBalance() {
+            try {
+                const { totalBalance } = await client.getBalance({ owner: currentAccount.address });
+                const suiBalance = (BigInt(totalBalance) / 1000000000n).toString();
+                document.getElementById('balance').innerText = `Your Balance: ${suiBalance} SUI`;
+            } catch (e) {
+                document.getElementById('balance').innerText = 'Balance: Error loading';
             }
         }
 
@@ -226,24 +285,26 @@
             const recipient = document.getElementById('recipient').value.trim();
             const amount = parseFloat(document.getElementById('amount').value);
 
-            if (!recipient.startsWith('0x') || isNaN(amount) || amount <= 0) {
-                setStatus('Invalid recipient or amount', true);
+            if (!recipient || !amount || amount <= 0) {
+                setStatus('Enter valid recipient and amount', true);
                 return;
             }
 
-            setStatus('Processing transaction...');
+            setStatus('Preparing transaction...');
 
             try {
                 const tx = new Transaction();
-                const amountMist = Math.floor(amount * 1_000_000_000);
+                const amountMist = BigInt(Math.floor(amount * 1_000_000_000));
                 const [coin] = tx.splitCoins(tx.gas, [amountMist]);
                 tx.transferObjects([coin], recipient);
                 tx.setSender(currentAccount.address);
 
-                const { transactionBlockBytes, signature } = await currentWallet.features['sui:signTransactionBlock'].signTransactionBlock({
-                    transactionBlock: await tx.build({ client }),
+                const { transactionBlockBytes } = await tx.build({ client });
+
+                const { signature } = await currentWallet.features['sui:signTransactionBlock'].signTransactionBlock({
+                    transactionBlock: transactionBlockBytes,
                     account: currentAccount,
-                    chain: currentAccount.chains[0],
+                    chain: 'sui:testnet'
                 });
 
                 const result = await client.executeTransactionBlock({
@@ -252,7 +313,8 @@
                     options: { showEffects: true }
                 });
 
-                setStatus(`Payment sent! Digest: ${result.digest}`);
+                setStatus(`Payment Sent! Digest: ${result.digest}`);
+                await showBalance();
             } catch (e) {
                 setStatus(`Error: ${e.message}`, true);
             }
