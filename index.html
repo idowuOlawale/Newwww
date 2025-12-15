@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusPay - Fast P2P Payments on Sui</title>
+  
+  <!-- Sui Wallet Kit (official) -->
+  <script type="module">
+    import { WalletKitProvider } from "https://cdn.jsdelivr.net/npm/@mysten/wallet-kit@latest/dist/esm/index.js";
+    import "@mysten/wallet-kit/styles.css";
+    
+    customElements.define("wallet-kit-provider", WalletKitProvider);
+  </script>
+  
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #0f172a, #1e293b); color: #e2e8f0; margin: 0; padding: 0; min-height: 100vh; }
+    header { background: #0ea5e9; padding: 30px 20px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    .logo-container { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; }
+    .logo-container img { height: 70px; border-radius: 12px; }
+    h1 { margin: 0; font-size: 2.5rem; color: white; }
+    .school { font-size: 1.1rem; color: #cffafe; margin-top: 10px; }
+    main { max-width: 650px; margin: 40px auto; padding: 20px; background: #1e293b; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .connect-section { text-align: center; margin-bottom: 30px; padding: 20px; background: #334155; border-radius: 12px; }
+    section { margin-bottom: 30px; padding: 25px; background: #334155; border-radius: 12px; }
+    h2 { color: #0ea5e9; border-bottom: 2px solid #0ea5e9; padding-bottom: 10px; }
+    input { width: 100%; padding: 14px; margin: 12px 0; border-radius: 8px; border: none; background: #475569; color: white; font-size: 1rem; }
+    button:not(.wallet-btn) { width: 100%; padding: 14px; margin: 12px 0; border-radius: 8px; border: none; background: #0ea5e9; color: white; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.3s; }
+    button:not(.wallet-btn):hover { background: #0284c7; }
+    .status { color: #86efac; font-weight: bold; font-size: 1.1rem; margin: 15px 0; }
+    .share-link { word-break: break-all; background: #1e293b; padding: 15px; border-radius: 8px; margin-top: 10px; }
+    .share-link a { color: #0ea5e9; }
+    .powered-by { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 30px; font-size: 1.1rem; }
+    .powered-by img { height: 35px; }
+    footer { text-align: center; padding: 30px; color: #94a3b8; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <wallet-kit-provider auto-connect network="testnet">
+    <header>
+      <div class="logo-container">
+        <img src="https://cdn.prod.website-files.com/5de2db6d3719a1e2f3e4454c/6376a3a1f404f5fe1c911a8f_wise_logo_5b1c1591ccb07c35348a37664c01d458_800.jpeg" alt="CampusPay Logo">
+        <div>
+          <h1>CampusPay</h1>
+          <p class="school">Built by a LASUSTECH Student • Sui Campus Hackathon 2025</p>
+        </div>
+        <img src="https://mms.businesswire.com/media/20230217005064/en/1716626/23/Sui_Logo_Brand2x.jpg" alt="Sui Logo">
+      </div>
+    </header>
+
+    <main>
+      <div class="connect-section">
+        <wallet-kit-connect-button></wallet-kit-connect-button>
+        <div id="status" class="status" style="display:none;"></div>
+      </div>
+
+      <section id="send">
+        <h2>Send SUI</h2>
+        <input id="to-address" placeholder="Recipient Sui Address (0x...)">
+        <input id="amount" type="number" step="0.001" placeholder="Amount in SUI (e.g. 0.5)">
+        <button id="send-btn">Send Payment 💸</button>
+      </section>
+
+      <section id="request">
+        <h2>Request Payment</h2>
+        <input id="request-amount" type="number" step="0.001" placeholder="Amount to request (SUI)">
+        <div id="share-link" class="share-link" style="display:none;"></div>
+      </section>
+
+      <section id="split">
+        <h2>Bill Splitter</h2>
+        <input id="bill-total" type="number" step="0.001" placeholder="Total Bill Amount (SUI)">
+        <input id="num-people" type="number" min="2" placeholder="Number of People">
+        <p id="split-result" style="font-weight:bold; margin-top:20px; color:#86efac; font-size:1.2rem;"></p>
+      </section>
+
+      <div class="powered-by">
+        Powered by
+        <img src="https://mms.businesswire.com/media/20230217005064/en/1716626/23/Sui_Logo_Brand2x.jpg" alt="Sui Logo">
+        Sui Blockchain
+      </div>
+    </main>
+
+    <footer>
+      Made for Sui Campus Hackathon • Instant, near-zero fee payments for Nigerian students 🚀
+    </footer>
+  </wallet-kit-provider>
+
+  <script type="module">
+    import { useWalletKit } from "https://cdn.jsdelivr.net/npm/@mysten/wallet-kit@latest/dist/esm/index.js";
+    import { TransactionBlock } from "https://cdn.jsdelivr.net/npm/@mysten/sui@latest/js/sdk/dist/esm/index.js";
+
+    const { connected, currentAccount, signAndExecuteTransactionBlock } = useWalletKit();
+
+    const statusEl = document.getElementById('status');
+
+    function updateStatus() {
+      if (connected.value && currentAccount.value) {
+        statusEl.textContent = `Connected: ${currentAccount.value.address.slice(0, 8)}...${currentAccount.value.address.slice(-6)}`;
+        statusEl.style.display = 'block';
+      } else {
+        statusEl.style.display = 'none';
+      }
+    }
+
+    connected.subscribe(updateStatus);
+    currentAccount.subscribe(updateStatus);
+
+    // Send SUI
+    document.getElementById('send-btn').addEventListener('click', async () => {
+      if (!connected.value) return alert('Please connect your wallet first!');
+      const to = document.getElementById('to-address').value.trim();
+      const amountStr = document.getElementById('amount').value;
+      if (!to || !amountStr) return alert('Fill in recipient and amount');
+
+      const amountMist = BigInt(Math.floor(parseFloat(amountStr) * 1_000_000_000));
+
+      const tx = new TransactionBlock();
+      const [coin] = tx.splitCoins(tx.gas, [amountMist]);
+      tx.transferObjects([coin], to);
+
+      try {
+        await signAndExecuteTransactionBlock({ transactionBlock: tx });
+        alert('Payment sent successfully! 🎉');
+        document.getElementById('to-address').value = '';
+        document.getElementById('amount').value = '';
+      } catch (e) {
+        alert('Transaction failed: ' + (e.message || e));
+      }
+    });
+
+    // Request Link
+    document.getElementById('request-amount').addEventListener('input', () => {
+      const amt = document.getElementById('request-amount').value;
+      const linkEl = document.getElementById('share-link');
+      if (amt > 0 && currentAccount.value) {
+        const url = `${window.location.href}?request=${currentAccount.value.address}&amount=${amt}`;
+        linkEl.innerHTML = `Share this payment request link:<br><a href="${url}" target="_blank">${url}</a>`;
+        linkEl.style.display = 'block';
+      } else {
+        linkEl.style.display = 'none';
+      }
+    });
+
+    // Bill Splitter
+    function calculateSplit() {
+      const total = parseFloat(document.getElementById('bill-total').value);
+      const people = parseInt(document.getElementById('num-people').value);
+      const result = document.getElementById('split-result');
+      if (!isNaN(total) && !isNaN(people) && people >= 2) {
+        result.textContent = `Each person pays: ${(total / people).toFixed(4)} SUI`;
+      } else {
+        result.textContent = '';
+      }
+    }
+    document.getElementById('bill-total').addEventListener('input', calculateSplit);
+    document.getElementById('num-people').addEventListener('input', calculateSplit);
+  </script>
+</body>
+</html>
