@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sui Wallet - Connect, View & Transfer</title>
+  <script type="module">
+    import { getWallets } from "https://cdn.jsdelivr.net/npm/@mysten/wallet-standard@latest/+esm";
+    import { SuiClient, getFullnodeUrl } from "https://cdn.jsdelivr.net/npm/@mysten/sui@latest/client/+esm";
+    import { Transaction } from "https://cdn.jsdelivr.net/npm/@mysten/sui@latest/transactions/+esm";
+
+    const NETWORK = 'testnet'; // Change to 'mainnet' if needed
+    const client = new SuiClient({ url: getFullnodeUrl(NETWORK) });
+
+    const wallets = getWallets();
+
+    let currentAccount = null;
+    let currentWallet = null;
+
+    // DOM elements
+    const connectBtn = document.getElementById('connectBtn');
+    const addressEl = document.getElementById('address');
+    const balanceEl = document.getElementById('balance');
+    const statusEl = document.getElementById('status');
+    const modal = document.getElementById('walletModal');
+    const walletList = document.getElementById('walletList');
+    const closeModal = document.getElementsByClassName('close')[0];
+    const txSection = document.getElementById('txSection');
+    const txList = document.getElementById('txList');
+    const transferSection = document.getElementById('transferSection');
+    const recipientInput = document.getElementById('recipient');
+    const amountInput = document.getElementById('amount');
+    const sendBtn = document.getElementById('sendBtn');
+    const txResult = document.getElementById('txResult');
+
+    async function updateUI() {
+      if (currentAccount) {
+        const shortAddr = currentAccount.address.slice(0, 6) + '...' + currentAccount.address.slice(-4);
+        addressEl.textContent = shortAddr;
+        connectBtn.textContent = 'Disconnect';
+        statusEl.textContent = `Connected with ${currentWallet.name}`;
+        transferSection.style.display = 'block';
+        txSection.style.display = 'block';
+
+        // Balance
+        try {
+          const { totalBalance } = await client.getBalance({ owner: currentAccount.address });
+          const sui = (BigInt(totalBalance) / BigInt(1_000_000_000)).toFixed(4);
+          balanceEl.textContent = `${sui} SUI`;
+        } catch (err) {
+          balanceEl.textContent = 'Error';
+        }
+
+        // Transactions
+        await loadTransactions();
+      } else {
+        addressEl.textContent = '-';
+        balanceEl.textContent = '-';
+        connectBtn.textContent = 'Connect Wallet';
+        statusEl.textContent = '';
+        transferSection.style.display = 'none';
+        txSection.style.display = 'none';
+        txList.innerHTML = '';
+        txResult.innerHTML = '';
+      }
+    }
+
+    async function loadTransactions() {
+      txList.innerHTML = '<li>Loading recent transactions...</li>';
+      try {
+        const txns = await client.queryTransactionBlocks({
+          filter: {
+            Or: [
+              { FromAddress: currentAccount.address },
+              { ToAddress: currentAccount.address }
+            ]
+          },
+          order: 'descending',
+          limit: 15,
+          options: { showEffects: true, showBalanceChanges: true }
+        });
+
+        txList.innerHTML = txns.data.length === 0 ? '<li>No transactions yet.</li>' : '';
+        for (const txn of txns.data) {
+          const li = document.createElement('li');
+          const digest = txn.digest;
+          const link = `https://suiscan.xyz/${NETWORK}/tx/${digest}`;
+          const status = txn.effects?.status?.status || 'Unknown';
+          let desc = 'Other';
+          let amount = '';
+          const suiChange = txn.balanceChanges?.find(c => c.coinType.endsWith('::sui::SUI'));
+          if (suiChange) {
+            const change = (BigInt(suiChange.amount) / BigInt(1_000_000_000)).toString();
+            desc = change > 0 ? 'Received' : 'Sent';
+            amount = change > 0 ? `+${change}` : change;
+          }
+          li.innerHTML = `<strong><a href="${link}" target="_blank">${digest.slice(0,10)}...</a></strong><br>
+                          ${desc} ${amount} SUI • ${status}`;
+          txList.appendChild(li);
+        }
+      } catch (err) {
+        txList.innerHTML = '<li>Error loading transactions.</li>';
+      }
+    }
+
+    async function sendSui() {
+      const recipient = recipientInput.value.trim();
+      const amountStr = amountInput.value.trim();
+      if (!recipient || !amountStr) {
+        txResult.innerHTML = '<span style="color:red">Please enter recipient and amount</span>';
+        return;
+      }
+
+      const amount = parseFloat(amountStr);
+      if (isNaN(amount) || amount <= 0) {
+        txResult.innerHTML = '<span style="color:red">Invalid amount</span>';
+        return;
+      }
+
+      txResult.textContent = 'Preparing transaction...';
+      sendBtn.disabled = true;
+
+      try {
+        const txb = new Transaction();
+        const [coin] = txb.splitCoins(txb.gas, [BigInt(amount * 1_000_000_000)]);
+        txb.transferObjects([coin], recipient);
+        txb.setSender(currentAccount.address);
+
+        const result = await currentWallet.features['sui:signAndExecuteTransaction'].signAndExecuteTransaction({
+          transaction: txb,
+          chain: `sui:${NETWORK}`
+        });
+
+        if (result.effects?.status?.status === 'success') {
+          const link = `https://suiscan.xyz/${NETWORK}/tx/${result.digest}`;
+          txResult.innerHTML = `<span style="color:green">Success! <a href="${link}" target="_blank">View on Suiscan</a></span>`;
+          recipientInput.value = '';
+          amountInput.value = '';
+          await updateUI(); // Refresh balance & tx list
+        } else {
+          txResult.innerHTML = `<span style="color:red">Failed: ${result.effects?.status?.error || 'Unknown error'}</span>`;
+        }
+      } catch (err) {
+        txResult.innerHTML = `<span style="color:red">Error: ${err.message || 'Transaction rejected'}</span>`;
+        console.error(err);
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    async function connectWallet(wallet) {
+      try {
+        const { accounts } = await wallet.features['standard:connect'].connect();
+        if (accounts.length > 0) {
+          currentAccount = accounts[0];
+          currentWallet = wallet;
+        }
+      } catch (err) {
+        statusEl.textContent = 'Connection failed/rejected';
+      }
+      modal.style.display = 'none';
+      updateUI();
+    }
+
+    async function disconnect() {
+      if (currentWallet?.features['standard:disconnect']) {
+        await currentWallet.features['standard:disconnect'].disconnect();
+      }
+      currentAccount = null;
+      currentWallet = null;
+      updateUI();
+    }
+
+    function showModal() {
+      const available = wallets.get();
+      walletList.innerHTML = available.length === 0
+        ? '<li>No wallet detected. Install <strong>Slush</strong>.</li>'
+        : '';
+      available.forEach(wallet => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.textContent = wallet.name + (wallet.accounts.length > 0 ? ' (Connected)' : '');
+        btn.onclick = () => connectWallet(wallet);
+        li.appendChild(btn);
+        walletList.appendChild(li);
+      });
+      modal.style.display = 'block';
+    }
+
+    connectBtn.onclick = () => currentAccount ? disconnect() : showModal();
+    closeModal.onclick = () => modal.style.display = 'none';
+    window.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
+    sendBtn.onclick = sendSui;
+
+    // Wallet change listener & auto-connect
+    wallets.on('change', () => {
+      const all = wallets.get();
+      let found = false;
+      all.forEach(w => {
+        if (w.accounts.length > 0) {
+          currentAccount = w.accounts[0];
+          currentWallet = w;
+          found = true;
+        }
+      });
+      if (!found) { currentAccount = null; currentWallet = null; }
+      updateUI();
+    });
+
+    setTimeout(() => {
+      wallets.get().forEach(w => {
+        if (w.accounts.length > 0) {
+          currentAccount = w.accounts[0];
+          currentWallet = w;
+        }
+      });
+      updateUI();
+    }, 1000);
+  </script>
+
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 30px; background: #f0f8ff; max-width: 800px; margin: 0 auto; }
+    h1 { color: #0066ff; }
+    button { padding: 12px 24px; font-size: 18px; background: #0066ff; color: white; border: none; border-radius: 8px; cursor: pointer; margin: 10px; }
+    button:hover { background: #0055cc; }
+    button:disabled { background: #aaa; cursor: not-allowed; }
+    input { padding: 12px; width: 300px; margin: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; }
+    #status { margin: 20px; min-height: 24px; font-weight: bold; }
+    .section { margin: 40px 0; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    #txList { list-style: none; padding: 0; text-align: left; }
+    #txList li { padding: 12px; margin: 8px 0; background: #f8f9fa; border-radius: 8px; }
+    #txResult { margin-top: 15px; font-size: 18px; }
+    .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+    .modal-content { background: white; margin: 15% auto; padding: 20px; width: 80%; max-width: 500px; border-radius: 12px; }
+    .close { color: #aaa; float: right; font-size: 28px; cursor: pointer; }
+    #walletList button { width: 100%; margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <h1>Sui Wallet Dashboard</h1>
+  <p>Connect your Slush wallet to view balance, history, and send SUI.</p>
+
+  <button id="connectBtn">Connect Wallet</button>
+
+  <div class="section info">
+    <p><strong>Address:</strong> <span id="address">-</span></p>
+    <p><strong>SUI Balance (${NETWORK}):</strong> <span id="balance">-</span></p>
+  </div>
+
+  <p id="status">Detecting wallet...</p>
+
+  <div id="transferSection" class="section" style="display:none;">
+    <h2>Send SUI</h2>
+    <input type="text" id="recipient" placeholder="Recipient address (0x...)" /><br>
+    <input type="number" id="amount" step="0.0001" placeholder="Amount in SUI" /><br>
+    <button id="sendBtn">Send SUI</button>
+    <div id="txResult"></div>
+  </div>
+
+  <div id="txSection" class="section" style="display:none;">
+    <h2>Recent Transactions</h2>
+    <ul id="txList"></ul>
+  </div>
+
+  <p><small>
+    Wallet: <a href="https://chromewebstore.google.com/detail/slush-a-sui-wallet/opcgpfmipidbgpenhmajoajpbobppdil" target="_blank">Slush Extension</a> •
+    Testnet Faucet: <a href="https://faucet.testnet.sui.io" target="_blank">Get SUI</a>
+  </small></p>
+
+  <!-- Wallet Modal -->
+  <div id="walletModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Select Wallet</h2>
+      <ul id="walletList"></ul>
+    </div>
+  </div>
+</body>
+</html>
