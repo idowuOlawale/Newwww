@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LASUSTECH Social DApp (No Move)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f4f7f9;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #0066cc;
+            text-align: center;
+        }
+        .section {
+            margin-top: 25px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        textarea {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:disabled {
+            background-color: #aaa;
+        }
+        #wallet-status {
+            text-align: right;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+    <script src="https://unpkg.com/@mysten/sui@1.0.1/dist/index.global.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <h1>LASUSTECH Simple DApp (SUI Transfer Event)</h1>
+        
+        <div id="wallet-status">
+            <button id="connect-button" onclick="connectWallet()">Connect Sui Wallet</button>
+            <div id="account-info" style="font-size: 0.9em; margin-top: 5px;">Status: Not Connected</div>
+        </div>
+        
+        <div id="post-section" class="section" style="display: none;">
+            <h2>📝 Post a Campus Status</h2>
+            <p style="font-size: 0.9em; color: #666;">
+                Posting is a **0.001 SUI** transaction to the 'Campus Event' address. The successful transaction serves as your *on-chain post*.
+            </p>
+            <form id="post-form">
+                <textarea id="post-content" placeholder="What's happening on campus? (This text is stored off-chain but is proof of transaction)" maxlength="256" rows="3" required></textarea>
+                <button type="submit" id="post-button">Broadcast Status (0.001 SUI)</button>
+                <div id="post-status" class="status-message" style="display: none;"></div>
+            </form>
+        </div>
+
+    </div>
+
+    <script>
+        // --- IMPORTANT: REPLACE WITH YOUR OWN ADDRESS ---
+        // This address will receive the 0.001 SUI for every "post"
+        const EVENT_RECEIVER_ADDRESS = '0x0000000000000000000000000000000000000000000000000000000000000000'; // Replace with a valid Sui address
+        const POST_AMOUNT_SUI = 0.001;
+        const POST_AMOUNT_MIST = BigInt(Math.floor(POST_AMOUNT_SUI * 1_000_000_000));
+        // --------------------------------------------------------------------------
+
+        let suiClient;
+        let connectedWallet;
+        const sui = window.sui;
+
+        function updateStatus(elementId, message, isSuccess) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.className = isSuccess ? 'status-message success' : 'status-message error';
+            el.style.display = 'block';
+        }
+        
+        // --- Wallet Connection Logic ---
+        async function connectWallet() {
+            try {
+                // Initialize Sui Client for Testnet
+                suiClient = new sui.SuiClient({ url: sui.getFullnodeUrl('testnet') });
+                if (!sui) {
+                    alert("Sui Wallet not found. Please install the Sui Wallet extension.");
+                    return;
+                }
+                
+                // Get connected accounts
+                const accounts = await sui.getAccounts();
+                if (accounts.length > 0) {
+                    connectedWallet = accounts[0];
+                    document.getElementById('account-info').textContent = 
+                        'Connected: ' + connectedWallet.address.slice(0, 6) + '...' + connectedWallet.address.slice(-4);
+                    document.getElementById('connect-button').textContent = 'Wallet Connected';
+                    document.getElementById('connect-button').disabled = true;
+                    
+                    // Show post section once connected
+                    document.getElementById('post-section').style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Wallet Connection Error:', error);
+                alert('Wallet Connection Failed: ' + error.message);
+            }
+        }
+        
+        // --- POST MESSAGE Logic (Simple SUI Transfer) ---
+        document.getElementById('post-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!connectedWallet) {
+                updateStatus('post-status', 'Error: Please connect your Sui Wallet first.', false);
+                return;
+            }
+
+            const content = document.getElementById('post-content').value;
+            
+            try {
+                // 1. Create a Programmable Transaction Block (PTB)
+                const tx = new sui.TransactionBlock();
+
+                // 2. Split a small amount of SUI from the gas coin
+                // This is the simplest way to send a specific amount in a PTB.
+                const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(POST_AMOUNT_MIST.toString())]);
+                
+                // 3. Transfer the newly split coin to the fixed receiver address
+                tx.transferObjects([coin], tx.pure.address(EVENT_RECEIVER_ADDRESS));
+
+                // 4. Sign and execute the transaction
+                const response = await sui.signAndExecuteTransactionBlock({ 
+                    transactionBlock: tx,
+                    options: { showEffects: true },
+                });
+
+                console.log('Post Success (Transfer Digest):', response);
+                
+                const explorerUrl = `https://suiscan.xyz/testnet/tx/${response.digest}`;
+
+                updateStatus('post-status', 
+                    `Post recorded! The transaction is your proof. View on Explorer: <a href="${explorerUrl}" target="_blank">View Digest</a>`, 
+                    true
+                );
+                document.getElementById('post-content').value = ''; // Clear textarea
+
+            } catch (error) {
+                console.error('Post Message Error:', error);
+                updateStatus('post-status', 'Post Failed. Ensure your wallet has SUI for the transaction.', false);
+            }
+        });
+
+        window.onload = connectWallet;
+    </script>
+</body>
+</html>
