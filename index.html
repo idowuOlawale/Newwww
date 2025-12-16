@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sui DApp Dashboard (Fixed & Responsive)</title>
+  
+  <script type="module">
+    // --- SDK Imports from CDN ---
+    import { getWallets } from "https://cdn.jsdelivr.net/npm/@mysten/wallet-standard@latest/+esm";
+    import { SuiClient, getFullnodeUrl } from "https://cdn.jsdelivr.net/npm/@mysten/sui@latest/client/+esm";
+    import { Transaction } from "https://cdn.jsdelivr.net/npm/@mysten/sui@latest/transactions/+esm";
+
+    const NETWORK = 'testnet';
+    const MIST_PER_SUI = BigInt(1_000_000_000);
+    const client = new SuiClient({ url: getFullnodeUrl(NETWORK) });
+
+    const wallets = getWallets();
+
+    let currentAccount = null;
+    let currentWallet = null;
+
+    // --- Utility Functions ---
+    
+    /** Converts MIST (BigInt) to SUI (string with decimals) accurately */
+    function formatMistToSui(mistAmount, decimals = 9, precision = 4) {
+        if (typeof mistAmount === 'string') {
+            mistAmount = BigInt(mistAmount);
+        }
+        
+        const divisor = BigInt(10) ** BigInt(decimals);
+        const integerPart = mistAmount / divisor;
+        const remainder = mistAmount % divisor;
+        
+        // Pad the remainder with leading zeros and slice to desired precision
+        let decimalPart = remainder.toString().padStart(decimals, '0').slice(0, precision);
+        
+        return `${integerPart.toString()}.${decimalPart}`;
+    }
+
+    // --- DOM Elements ---
+    const connectBtn = document.getElementById('connectBtn');
+    const statusEl = document.getElementById('wallet-status');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const accountAddressEl = document.getElementById('account-address');
+    const balanceEl = document.getElementById('balance');
+    const txList = document.getElementById('txList');
+    const recipientInput = document.getElementById('recipient');
+    const amountInput = document.getElementById('amount');
+    const sendBtn = document.getElementById('sendBtn');
+    const txResult = document.getElementById('txResult');
+    const nftGrid = document.getElementById('nftGrid');
+    const modal = document.getElementById('walletModal');
+    const walletList = document.getElementById('walletList');
+    const closeModal = document.getElementsByClassName('close')[0];
+
+    // --- UI Update and Data Loading ---
+
+    async function updateUI() {
+      if (currentAccount && currentAccount.address) {
+        const fullAddress = currentAccount.address;
+        const shortAddress = fullAddress.slice(0, 6) + '...' + fullAddress.slice(-4);
+        
+        // Update connection card
+        document.getElementById('connection-card').style.display = 'block';
+        document.getElementById('disconnected-card').style.display = 'none';
+        
+        statusEl.textContent = `Connected via ${currentWallet?.name || 'Wallet'}`;
+        accountAddressEl.textContent = shortAddress;
+
+        // Show main content
+        document.getElementById('send-card').style.display = 'block';
+        document.getElementById('tx-card').style.display = 'block';
+        document.getElementById('nft-card').style.display = 'block';
+
+        // Balance (using fixed formatting)
+        try {
+          const { totalBalance } = await client.getBalance({ owner: fullAddress });
+          balanceEl.textContent = `$${formatMistToSui(totalBalance)}`;
+        } catch { 
+          balanceEl.textContent = 'Error loading balance';
+        }
+
+        await Promise.all([loadTransactions(), loadNFTs()]);
+
+      } else {
+        // Disconnected state
+        document.getElementById('connection-card').style.display = 'none';
+        document.getElementById('disconnected-card').style.display = 'flex';
+        
+        statusEl.textContent = 'Disconnected';
+        accountAddressEl.textContent = 'N/A';
+        balanceEl.textContent = '$0.00';
+        
+        document.getElementById('send-card').style.display = 'none';
+        document.getElementById('tx-card').style.display = 'none';
+        document.getElementById('nft-card').style.display = 'none';
+      }
+    }
+
+    async function loadTransactions() {
+      if (!currentAccount?.address) return;
+      txList.innerHTML = '<li class="loading-item">Loading recent transactions...</li>';
+      try {
+        const txns = await client.queryTransactionBlocks({
+          filter: { Or: [{ FromAddress: currentAccount.address }, { ToAddress: currentAccount.address }] },
+          order: 'descending',
+          limit: 8,
+          options: { showEffects: true, showBalanceChanges: true }
+        });
+        
+        txList.innerHTML = '';
+        if (txns.data.length === 0) {
+            txList.innerHTML = '<li class="no-data-item">No recent transactions found.</li>';
+            return;
+        }
+
+        txns.data.forEach(txn => {
+          const li = document.createElement('li');
+          const link = `https://suiscan.xyz/${NETWORK}/tx/${txn.digest}`;
+          const status = txn.effects?.status?.status || 'Unknown';
+          
+          let desc = 'Contract Call', amount = '';
+          const suiChange = txn.balanceChanges?.find(c => c.coinType.endsWith('::sui::SUI') && c.owner.AddressOwner === currentAccount.address);
+          
+          if (suiChange) {
+            const change = formatMistToSui(suiChange.amount, 9, 4);
+            desc = BigInt(suiChange.amount) > 0 ? 'Received' : 'Sent';
+            amount = `${BigInt(suiChange.amount) > 0 ? '+' : ''}${change} SUI`;
+          }
+          
+          li.innerHTML = `
+            <span class="tx-amount ${BigInt(suiChange?.amount || 0) > 0 ? 'received' : 'sent'}">${amount}</span>
+            <span class="tx-digest">${txn.digest.slice(0, 10)}...</span>
+            <span class="tx-status">${desc} (${status})</span>
+          `;
+          li.onclick = () => window.open(link, '_blank');
+          txList.appendChild(li);
+        });
+      } catch (err) {
+        txList.innerHTML = '<li class="no-data-item">Error loading transactions.</li>';
+      }
+    }
+
+    async function loadNFTs() {
+      if (!currentAccount?.address) return;
+      nftGrid.innerHTML = '<div class="nft-card">Loading NFTs...</div>';
+      try {
+        const objects = await client.getOwnedObjects({
+          owner: currentAccount.address,
+          options: { showDisplay: true, showType: true },
+          limit: 12
+        });
+
+        const nfts = objects.data.filter(obj => obj.data?.display?.data);
+
+        nftGrid.innerHTML = nfts.length === 0 ? '<div class="nft-card no-data">No NFTs found.</div>' : '';
+
+        nfts.forEach(obj => {
+          const display = obj.data.display.data;
+          const name = display.name || 'Unnamed NFT';
+          const imageUrl = display.image_url || display.imageUrl || 'https://via.placeholder.com/300?text=No+Image';
+
+          const card = document.createElement('div');
+          card.className = 'nft-card';
+          card.innerHTML = 
+          `
+            <img src="${imageUrl}" alt="${name}" onerror="this.src='https://via.placeholder.com/300/1e2630/8b949e?text=No+Display'" />
+            <h3>${name}</h3>
+            <small>${obj.data.objectId.slice(0,6)}...</small>
+          `;
+          nftGrid.appendChild(card);
+        });
+      } catch (err) {
+        nftGrid.innerHTML = '<div class="nft-card no-data">Error loading NFTs.</div>';
+      }
+    }
+
+    // --- Transaction Logic (FIXED) ---
+
+    async function sendSui() {
+      if (!currentAccount || !currentWallet) {
+        txResult.innerHTML = '<span style="color:#ff4d4f">Wallet not connected – please reconnect.</span>';
+        return;
+      }
+
+      const recipient = recipientInput.value.trim();
+      const amountStr = amountInput.value.trim();
+      const amount = parseFloat(amountStr);
+      
+      // Validation
+      if (!recipient || amount <= 0 || isNaN(amount)) {
+        txResult.innerHTML = '<span style="color:#ff4d4f">Invalid recipient or amount.</span>';
+        return;
+      }
+      
+      txResult.textContent = 'Preparing transaction...';
+      sendBtn.disabled = true;
+
+      try {
+        // Convert SUI amount to MIST BigInt
+        const amountMist = BigInt(Math.round(amount * Number(MIST_PER_SUI)));
+
+        const txb = new Transaction();
+        
+        // 1. Split the gas coin (SUI)
+        const [coin] = txb.splitCoins(txb.gas, [amountMist]);
+        
+        // 2. Transfer the coin object to the recipient.
+        txb.transferObjects([coin], recipient);
+
+        // --- FIX FOR THE toJSON ERROR ---
+        const transactionData = await txb.build({ client, onlyTransactionKind: false });
+
+        // 3. Request wallet signature and execution
+        const result = await currentWallet.features['sui:signAndExecuteTransaction'].signAndExecuteTransaction({
+          transaction: transactionData,
+          chain: `sui:${NETWORK}`
+        });
+
+        // 4. Handle result
+        if (result.effects?.status?.status === 'success') {
+          const link = `https://suiscan.xyz/${NETWORK}/tx/${result.digest}`;
+          txResult.innerHTML = `<span style="color:#52c41a">Success! <a href="${link}" target="_blank">View on Suiscan</a></span>`;
+          recipientInput.value = ''; 
+          amountInput.value = '';
+          updateUI(); // Refresh balance and transaction list
+        } else {
+          // Transaction failed on-chain
+          txResult.innerHTML = `<span style="color:#ff4d4f">Tx Failed: ${result.effects?.status?.error || 'Unknown Error'}</span>`;
+        }
+      } catch (err) {
+        // Wallet rejection or network error
+        let errorMsg = err.message || 'Transaction Rejected by Wallet or Network Error';
+        if (errorMsg.includes('Insufficient gas')) {
+             errorMsg = 'Insufficient SUI balance or Gas budget too low.';
+        }
+        txResult.innerHTML = `<span style="color:#ff4d4f">Error: ${errorMsg}</span>`;
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    // --- Wallet Functions ---
+    async function connectWallet(wallet) {
+      try {
+        const { accounts } = await wallet.features['standard:connect'].connect();
+        if (accounts.length > 0) {
+          currentAccount = accounts[0];
+          currentWallet = wallet;
+        }
+      } catch {
+        // Connection rejected
+      }
+      modal.style.display = 'none';
+      updateUI();
+    }
+
+    async function disconnect() {
+      if (currentWallet?.features['standard:disconnect']) {
+        await currentWallet.features['standard:disconnect'].disconnect();
+      }
+      currentAccount = null;
+      currentWallet = null;
+      updateUI();
+    }
+
+    function showModal() {
+      const available = wallets.get();
+      walletList.innerHTML = available.length === 0 ? '<li>No wallet detected. Install a Sui wallet (e.g., Sui Wallet) and refresh.</li>' : '';
+      available.forEach(wallet => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.textContent = `${wallet.name} ${wallet.accounts.length > 0 ? ' (Connected)' : ''}`;
+        btn.onclick = () => connectWallet(wallet);
+        li.appendChild(btn);
+        walletList.appendChild(li);
+      });
+      modal.style.display = 'block';
+    }
+
+    // --- Event Listeners ---
+    connectBtn.onclick = showModal;
+    disconnectBtn.onclick = disconnect;
+    closeModal.onclick = () => modal.style.display = 'none';
+    window.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
+    sendBtn.onclick = sendSui;
+
+    // Listen for wallet changes
+    wallets.on('change', () => {
+      const all = wallets.get();
+      let found = false;
+      all.forEach(w => {
+        if (w.accounts.length > 0) {
+          currentAccount = w.accounts[0];
+          currentWallet = w;
+          found = true;
+        }
+      });
+      if (!found) { currentAccount = null; currentWallet = null; }
+      updateUI();
+    });
+
+    // Initial check on load
+    setTimeout(() => {
+      wallets.get().forEach(w => {
+        if (w.accounts.length > 0) {
+          currentAccount = w.accounts[0];
+          currentWallet = w;
+        }
+      });
+      updateUI();
+    }, 1000);
+
+  </script>
+
+  <style>
+    :root {
+      --bg-color: #0d1117;
+      --card-bg: #161b22;
+      --text-color: #c9d1d9;
+      --sui-blue: #0084ff;
+      --border-color: #30363d;
+      --success-color: #52c41a;
+      --error-color: #ff4d4f;
+    }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg-color); 
+      color: var(--text-color);
+      margin: 0; 
+      padding: 0;
+    }
+    .main-container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 15px;
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 1fr; /* Default to single column for mobile */
+    }
+    @media (min-width: 768px) {
+      .main-container {
+        grid-template-columns: 1fr 2fr; /* Two columns for tablet/desktop */
+      }
+      .col-1 { grid-column: 1 / 2; }
+      .col-2 { grid-column: 2 / 3; }
+      .full-width { grid-column: 1 / 3; }
+    }
+    @media (min-width: 1024px) {
+      .main-container {
+        grid-template-columns: 1fr 2fr 1fr; /* Three columns for large desktop */
+      }
+      .col-1 { grid-column: 1 / 2; }
+      .col-2 { grid-column: 2 / 3; }
+      .col-3 { grid-column: 3 / 4; }
+    }
+    
+    .card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    h2 { 
+      color: var(--sui-blue); 
+      margin-top: 0;
+      font-size: 1.2em;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    /* --- Header / Balance Card --- */
+    #balance-header {
+      text-align: right;
+      font-size: 2.5em;
+      font-weight: bold;
+      color: white;
+      margin-bottom: 10px;
+    }
+    #account-info {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+    }
+    #account-info span {
+        background: #1e2630;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.9em;
+        color: #8b949e;
+    }
+
+    /* --- Wallet Card BUTTON Redesign --- */
+    #wallet-card button {
+        /* New prominent, full-width style for Connect/Disconnect */
+        width: 100%;
+        padding: 12px 20px;
+        background: var(--sui-blue);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 10px;
+        font-weight: bold;
+        font-size: 1.1em;
+        transition: background-color 0.2s, box-shadow 0.2s;
+    }
+    #wallet-card button:hover { 
+        background: #006bbd; 
+        box-shadow: 0 0 10px rgba(0, 132, 255, 0.5);
+    }
+    #wallet-card button:disabled { background: #3a4755; cursor: not-allowed; }
+    
+    .wallet-status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px dashed var(--border-color);
+    }
+    .wallet-status-row span {
+      font-size: 0.9em;
+      color: #8b949e;
+    }
+
+    /* --- Send SUI Card --- */
+    #send-card h2 { text-align: left; }
+    #send-card input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-color);
+      color: var(--text-color);
+      box-sizing: border-box;
+      font-size: 1em;
+    }
+    #sendBtn {
+      width: 100%;
+      background: var(--sui-blue);
+      color: white;
+      padding: 12px;
+    }
+    #txResult {
+      margin-top: 15px;
+      font-size: 0.9em;
+      min-height: 20px;
+    }
+
+    /* --- Transactions Card --- */
+    #txList { 
+      list-style: none; 
+      padding: 0; 
+      margin: 0;
+      font-size: 0.9em;
+    }
+    #txList li { 
+      display: flex;
+      justify-content: space-between;
+      padding: 12px; 
+      margin-bottom: 8px; 
+      background: var(--bg-color); 
+      border-radius: 8px; 
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: border-color 0.2s;
+    }
+    #txList li:hover { border-color: var(--sui-blue); }
+    .tx-digest { color: #8b949e; font-size: 0.8em; flex: 1; text-align: left; }
+    .tx-amount { font-weight: bold; padding-right: 15px; }
+    .tx-amount.sent { color: var(--error-color); }
+    .tx-amount.received { color: var(--success-color); }
+    .tx-status { text-align: right; }
+    .loading-item, .no-data-item { text-align: center !important; color: #8b949e !important; }
+
+    /* --- NFT Grid Card --- */
+    #nftGrid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); 
+      gap: 15px; 
+      padding-top: 10px;
+    }
+    .nft-card { 
+      background: var(--bg-color); 
+      border-radius: 8px; 
+      padding: 10px; 
+      text-align: center;
+      border: 1px solid var(--border-color);
+    }
+    .nft-card img { 
+      width: 100%; 
+      aspect-ratio: 1 / 1; 
+      object-fit: cover; 
+      border-radius: 6px; 
+      background: #1e2630;
+      margin-bottom: 5px;
+    }
+    .nft-card h3 { 
+      margin: 5px 0 0; 
+      font-size: 0.9em; 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+    }
+    .nft-card small { color: #8b949e; font-size: 0.7em; }
+    .nft-card.no-data { grid-column: 1 / -1; }
+
+    /* --- Modal Styles (Same as before, but dark theme) --- */
+    .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }
+    .modal-content { background: var(--card-bg); margin: 15% auto; padding: 25px; width: 90%; max-width: 400px; border-radius: 12px; border: 1px solid var(--border-color); }
+    .close { color: #8b949e; float: right; font-size: 28px; cursor: pointer; }
+    #walletList button { background: #3a4755; color: white; border: none; padding: 10px; margin: 5px 0; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    
+    <div class="col-1">
+        
+        <div id="wallet-card" class="card">
+            <h2>Wallet Status</h2>
+            <div class="wallet-status-row">
+                <strong>Status:</strong> <span id="wallet-status">Disconnected</span>
+            </div>
+            
+            <div id="connection-card" style="display:none;">
+                <div class="wallet-status-row">
+                    <strong>Account:</strong> <span id="account-address">N/A</span>
+                </div>
+                <div id="wallet-actions">
+                    <button id="disconnectBtn">Disconnect Wallet</button>
+                    </div>
+            </div>
+
+            <div id="disconnected-card" style="display:flex; flex-direction: column; align-items: center;">
+                <p style="color:#8b949e; font-size: 0.9em;">Connect your wallet to access the dashboard.</p>
+                <button id="connectBtn">Connect Wallet</button>
+            </div>
+        </div>
+
+        <div id="send-card" class="card" style="display:none; margin-top: 20px;">
+            <h2>Send SUI</h2>
+            <input type="text" id="recipient" placeholder="Recipient address (0x...)" /><br>
+            <input type="number" id="amount" step="0.000000001" placeholder="Amount (SUI)" /><br>
+            <button id="sendBtn">Send SUI</button>
+            <div id="txResult"></div>
+        </div>
+    </div>
+
+    <div class="col-2">
+        
+        <div id="balance-section" class="card" style="padding-top: 25px;">
+            <div id="account-info">
+                <span>Account 1</span>
+            </div>
+            <div id="balance-header">
+                <span id="balance">$0.00</span>
+            </div>
+            <div style="font-size: 0.9em; color: #8b949e; text-align: right;">SUI on ${NETWORK}</div>
+        </div>
+        
+        <div id="tx-card" class="card" style="display:none; margin-top: 20px;">
+            <h2>Recent Transactions</h2>
+            <ul id="txList"></ul>
+        </div>
+    </div>
+
+    <div class="col-3 full-width">
+        <div id="nft-card" class="card" style="display:none; margin-top: 20px;">
+            <h2>Your NFTs</h2>
+            <div id="nftGrid"></div>
+        </div>
+    </div>
+  </div>
+
+  <div id="walletModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Select Wallet</h2>
+      <ul id="walletList"></ul>
+    </div>
+  </div>
+</body>
+</html>
