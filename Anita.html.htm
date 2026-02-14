@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For My Love, Anita ❤️</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --love-bg: radial-gradient(circle at center, #c9184a, #800f2f, #590d22);
+            --glass-white: rgba(255, 255, 255, 0.12);
+            --gold: #d4af37;
+        }
+
+        * { box-sizing: border-box; }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: var(--love-bg);
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden;
+            transition: background 2s ease;
+        }
+
+        /* Envelope Styling */
+        .wrapper {
+            cursor: pointer;
+            z-index: 10;
+            text-align: center;
+            transition: all 0.6s ease;
+        }
+
+        .envelope {
+            position: relative;
+            width: 280px;
+            height: 180px;
+            background: #ffffff;
+            border-radius: 5px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        /* Fold Lines */
+        .envelope::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            border-top: 90px solid #fcfcfc;
+            border-left: 140px solid transparent;
+            border-right: 140px solid transparent;
+            z-index: 2;
+        }
+
+        .seal {
+            width: 55px;
+            height: 55px;
+            background: var(--gold);
+            border-radius: 50%;
+            z-index: 5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: 'Dancing Script', cursive;
+            font-size: 24px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border: 2px solid #b8860b;
+        }
+
+        .hint {
+            color: white;
+            margin-top: 25px;
+            font-size: 13px;
+            letter-spacing: 2px;
+            opacity: 0.8;
+            text-transform: uppercase;
+        }
+
+        /* Letter Styling */
+        #letter {
+            display: none;
+            opacity: 0;
+            width: 90%;
+            max-width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+            background: var(--glass-white);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 40px;
+            color: white;
+            text-align: left;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            transform: translateY(20px);
+            transition: all 1.2s ease;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.3) transparent;
+        }
+
+        #letter h2 {
+            font-family: 'Dancing Script', cursive;
+            text-align: center;
+            font-size: 2.2rem;
+            color: #ffccd5;
+            margin-top: 0;
+        }
+
+        .main-header {
+            text-align: center;
+            font-weight: 600;
+            color: #ff4d6d;
+            font-size: 1.4rem;
+            margin-bottom: 30px;
+        }
+
+        #letter p {
+            font-size: 1.05rem;
+            line-height: 1.8;
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+
+        .signature {
+            text-align: right;
+            font-family: 'Dancing Script', cursive;
+            font-size: 1.8rem;
+            margin-top: 30px;
+            color: #ffccd5;
+        }
+
+        /* Particles */
+        .heart {
+            position: fixed;
+            top: -10%;
+            pointer-events: none;
+            z-index: 1;
+            animation: rain linear forwards;
+        }
+
+        @keyframes rain {
+            to { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="wrapper" id="envelopeWrapper" onclick="openMessage()">
+        <div class="envelope">
+            <div class="seal">A</div>
+        </div>
+        <div class="hint">Tap to open, Anita ❤️</div>
+    </div>
+
+    <div id="letter">
+        <div class="main-header">HAPPY VALENTINE’S DAY TO THE LOVE OF MY LIFE ❤️😘</div>
+        
+        <h2>My Dearest Love,</h2>
+        
+        <p>It’s Valentine’s Day, and somehow every thought leads back to you. You’ve become such a beautiful part of my life, and loving you feels like the most natural thing in the world. Sometimes I still smile when I remember the first times you called me “baby” or “my love.” Those words stay with me longer than you know. They’re small, but they mean everything to me. 🌹</p>
+
+        <p>You have this way of making ordinary moments feel special. Our random conversations, your laughter, the way you check on me, even the smallest things you do carry so much warmth. You bring peace into my life in a way no one else ever has. With you, I feel safe, understood, and calm. ✨</p>
+
+        <p>You’re not just someone I love, you’re someone I’m grateful for. You’ve given me memories I replay without trying, and feelings I never want to lose. You’ve become my comfort, my happiness, and one of the best things that’s ever happened to me. 💖</p>
+
+        <p>When I think about the future, I see you there. I see us laughing, joking, teasing each other, and just being happy together. I look forward to the day I can see you, hold you, and not have to express everything through my phone. 🌸</p>
+
+        <p>I want you to know that no matter how busy life gets or how complicated things feel sometimes, my feelings for you haven’t changed. You’re still the first person I think about when something good happens, and the one I want to talk to when my mind is full. You’ve become more than just someone I love, you’ve become part of me. And no matter what happens, a part of my heart will always be yours. ❤️</p>
+
+        <p>I’ll be honest though, lately you’ve been snubbing me, and I’d be lying if I said it doesn’t hurt. I miss you, I miss us, and I miss the closeness we had. I just hope everything is okay, because you mean too much to me to feel that distance. 🥀</p>
+
+        <p>No matter what, you’re still very special to me. And on this Valentine’s Day, I just want you to remember that you’re loved, appreciated, and deeply cared for. 💝</p>
+
+        <p style="text-align: center; font-weight: bold;">Happy Valentine’s Day, my love ❤️</p>
+
+        <div class="signature">Always yours,<br>Olawale</div>
+    </div>
+
+    <script>
+        function openMessage() {
+            const wrap = document.getElementById('envelopeWrapper');
+            const letter = document.getElementById('letter');
+            
+            wrap.style.opacity = '0';
+            wrap.style.transform = 'scale(0.8)';
+            
+            setTimeout(() => {
+                wrap.style.display = 'none';
+                document.body.style.background = "#1a0208"; // Darker for readability
+                
+                letter.style.display = 'block';
+                setTimeout(() => {
+                    letter.style.opacity = '1';
+                    letter.style.transform = 'translateY(0)';
+                }, 100);
+
+                setInterval(spawnHeart, 300);
+            }, 600);
+        }
+
+        function spawnHeart() {
+            const h = document.createElement('div');
+            h.classList.add('heart');
+            const items = ['❤️', '💖', '🌹', '🌸', '✨', '💕'];
+            h.innerHTML = items[Math.floor(Math.random() * items.length)];
+            h.style.left = Math.random() * 100 + 'vw';
+            h.style.fontSize = (Math.random() * 20 + 15) + 'px';
+            h.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            document.body.appendChild(h);
+            setTimeout(() => h.remove(), 5000);
+        }
+    </script>
+</body>
+</html>
