@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Aura — Emotion & Gesture AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+–bg: #07090f;
+–surface: rgba(255,255,255,0.04);
+–surface2: rgba(255,255,255,0.07);
+–border: rgba(255,255,255,0.07);
+–border2: rgba(255,255,255,0.13);
+–text: #eef0fa;
+–muted: #5b6285;
+–dim: #1c2038;
+–accent: #4f8ef7;
+–glow: rgba(79,142,247,0.2);
+
+/* emotion colours */
+–happy: #ffd166;
+–surprised: #ff9f40;
+–neutral: #a0aec0;
+–sad: #74b3ff;
+–angry: #ff6b6b;
+–fearful: #c77dff;
+–disgusted: #5effa0;
+}
+
+html, body { height: 100%; background: var(–bg); color: var(–text); font-family: ‘Plus Jakarta Sans’, sans-serif; overflow-x: hidden; }
+
+/* bg grid */
+body::before {
+content:’’;
+position:fixed;inset:0;
+background-image:
+linear-gradient(rgba(79,142,247,.025) 1px,transparent 1px),
+linear-gradient(90deg,rgba(79,142,247,.025) 1px,transparent 1px);
+background-size:48px 48px;
+pointer-events:none;z-index:0;
+}
+
+/* ambient orbs */
+.orb {position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;}
+.orb1{width:450px;height:450px;background:rgba(79,142,247,.07);top:-120px;right:-80px;}
+.orb2{width:320px;height:320px;background:rgba(199,125,255,.055);bottom:60px;left:-80px;}
+
+/* app shell */
+.app {
+position:relative;z-index:1;
+min-height:100vh;
+display:flex;flex-direction:column;
+max-width:860px;margin:0 auto;
+padding:1rem 1rem 2rem;
+}
+
+/* header */
+header {
+display:flex;align-items:center;justify-content:space-between;
+padding:.75rem 0 1.25rem;
+}
+.logo {font-family:‘DM Mono’,monospace;font-size:1rem;letter-spacing:.2em;font-weight:500;}
+.logo-accent {color:var(–accent);}
+
+.badge {
+display:flex;align-items:center;gap:.45rem;
+padding:.3rem .8rem;
+background:var(–surface);border:1px solid var(–border);border-radius:999px;
+font-family:‘DM Mono’,monospace;font-size:.6rem;letter-spacing:.12em;color:var(–muted);
+}
+.sdot {
+width:6px;height:6px;border-radius:50%;background:var(–muted);
+transition:all .4s;
+}
+.sdot.live  {background:#4ade80;box-shadow:0 0 6px #4ade80;animation:blink 2s infinite;}
+.sdot.load  {background:var(–happy);box-shadow:0 0 6px var(–happy);animation:blink .5s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* camera card */
+.cam-card {
+position:relative;
+background:#000;
+border:1px solid var(–border);
+border-radius:20px;
+overflow:hidden;
+aspect-ratio:4/3;
+width:100%;
+}
+.cam-card video {
+width:100%;height:100%;object-fit:cover;
+transform:scaleX(-1);display:block;
+}
+#overlay {
+position:absolute;inset:0;width:100%;height:100%;
+pointer-events:none;transform:scaleX(-1);
+}
+
+/* placeholder */
+.cam-placeholder {
+position:absolute;inset:0;
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;
+background:linear-gradient(135deg,#0a0d18,#07090f);
+}
+.cam-placeholder-icon {
+width:64px;height:64px;border-radius:50%;
+background:var(–surface2);border:1px solid var(–border2);
+display:flex;align-items:center;justify-content:center;font-size:1.6rem;
+}
+.cam-placeholder-text {font-size:.7rem;color:var(–muted);letter-spacing:.1em;}
+
+/* scan */
+.scan-wrap {
+position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:20px;
+opacity:0;transition:opacity .6s;
+}
+.scan-wrap.on {opacity:1;}
+.scan-bar {
+position:absolute;left:0;right:0;height:2px;
+background:linear-gradient(90deg,transparent,var(–accent),transparent);
+box-shadow:0 0 14px var(–accent);
+animation:sweep 2.8s linear infinite;
+}
+@keyframes sweep{0%{top:0%}100%{top:100%}}
+
+/* no-face badge */
+.no-face {
+position:absolute;bottom:1rem;left:50%;transform:translateX(-50%);
+padding:.35rem .9rem;
+background:rgba(7,9,15,.85);border:1px solid var(–border2);border-radius:999px;
+font-family:‘DM Mono’,monospace;font-size:.6rem;letter-spacing:.1em;color:var(–muted);
+display:none;white-space:nowrap;backdrop-filter:blur(10px);
+}
+
+/* start button */
+.start-btn {
+position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+background:transparent;border:none;cursor:pointer;z-index:5;
+}
+.start-inner {
+display:flex;flex-direction:column;align-items:center;gap:.8rem;
+padding:1.4rem 2.4rem;
+background:rgba(7,9,15,.75);border:1px solid var(–border2);border-radius:18px;
+backdrop-filter:blur(14px);transition:all .25s;
+}
+.start-btn:hover .start-inner {
+background:rgba(79,142,247,.1);border-color:rgba(79,142,247,.5);
+box-shadow:0 0 36px var(–glow);
+}
+.start-icon {
+width:54px;height:54px;border-radius:50%;
+background:linear-gradient(135deg,#4f8ef7,#3b6fd0);
+display:flex;align-items:center;justify-content:center;font-size:1.4rem;
+box-shadow:0 0 24px var(–glow);
+}
+.start-label  {font-size:.8rem;font-weight:600;letter-spacing:.12em;color:var(–text);}
+.start-sub    {font-size:.62rem;color:var(–muted);}
+
+/* ───── cards row ───── */
+.cards {display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem;}
+
+.card {
+background:var(–surface);border:1px solid var(–border);
+border-radius:16px;padding:1.1rem;
+}
+.card-tag {
+font-family:‘DM Mono’,monospace;font-size:.58rem;
+letter-spacing:.15em;color:var(–muted);text-transform:uppercase;margin-bottom:.8rem;
+}
+
+/* EMOTION CARD */
+.emo-card {grid-column:span 2;}
+.emo-top {display:flex;align-items:center;gap:1rem;}
+.emo-emoji {font-size:3rem;line-height:1;flex-shrink:0;transition:all .3s;min-width:3.2rem;}
+.emo-mid  {flex:1;min-width:0;}
+.emo-name {font-size:1.35rem;font-weight:700;transition:color .3s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.emo-conf {font-family:‘DM Mono’,monospace;font-size:.65rem;color:var(–muted);margin-top:.2rem;}
+
+/* ring */
+.ring-wrap {position:relative;flex-shrink:0;width:58px;height:58px;}
+.ring-wrap svg {transform:rotate(-90deg);}
+.rb {fill:none;stroke:var(–dim);stroke-width:4;}
+.rf {fill:none;stroke-width:4;stroke-linecap:round;stroke-dasharray:144;stroke-dashoffset:144;transition:stroke-dashoffset .6s cubic-bezier(.4,0,.2,1),stroke .3s;}
+.ring-pct {position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:‘DM Mono’,monospace;font-size:.6rem;color:var(–muted);}
+
+/* bars */
+.bars {display:grid;grid-template-columns:1fr 1fr;gap:.38rem 1.2rem;margin-top:1rem;}
+.bar-row {display:flex;align-items:center;gap:.5rem;}
+.bar-name {font-family:‘DM Mono’,monospace;font-size:.56rem;color:var(–muted);width:50px;flex-shrink:0;text-transform:uppercase;}
+.bar-track {flex:1;height:3px;background:var(–dim);border-radius:2px;overflow:hidden;}
+.bar-fill  {height:100%;border-radius:2px;width:0%;transition:width .5s cubic-bezier(.4,0,.2,1);}
+.bar-pct   {font-family:‘DM Mono’,monospace;font-size:.55rem;color:var(–muted);width:24px;text-align:right;}
+
+/* GESTURE CARD */
+.gest-emoji {font-size:2.4rem;line-height:1;min-height:2.8rem;transition:all .3s;margin-bottom:.4rem;}
+.gest-name  {font-size:.9rem;font-weight:600;letter-spacing:.03em;min-height:1.1rem;}
+.gest-meta  {font-family:‘DM Mono’,monospace;font-size:.6rem;color:var(–muted);margin-top:.25rem;}
+
+/* HISTORY CARD */
+.hist-scroll {overflow-y:auto;max-height:140px;}
+.hist-scroll::-webkit-scrollbar{width:0;}
+.hist-empty {font-family:‘DM Mono’,monospace;font-size:.62rem;color:var(–dim);text-align:center;padding:1.5rem 0;}
+.hist-item {display:flex;align-items:center;gap:.6rem;padding:.38rem 0;border-bottom:1px solid var(–border);animation:fIn .25s ease;}
+@keyframes fIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+.h-t {font-family:‘DM Mono’,monospace;font-size:.55rem;color:var(–muted);width:44px;flex-shrink:0;}
+.h-e {font-size:.7rem;font-weight:600;flex:1;}
+.h-g {font-size:.62rem;color:var(–muted);}
+
+/* toast */
+.toast {
+position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(12px);
+background:rgba(255,100,100,.12);border:1px solid rgba(255,100,100,.28);color:#ff9999;
+padding:.55rem 1.1rem;border-radius:999px;font-family:‘DM Mono’,monospace;
+font-size:.65rem;letter-spacing:.08em;opacity:0;transition:all .3s;
+z-index:200;white-space:nowrap;pointer-events:none;backdrop-filter:blur(10px);
+}
+.toast.on {opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* mobile */
+@media(max-width:520px){
+.cam-card{aspect-ratio:3/4;border-radius:16px;}
+.bars{grid-template-columns:1fr;}
+.emo-name{font-size:1.1rem;}
+}
+</style>
+
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<div class="app">
+  <header>
+    <div class="logo">AURA<span class="logo-accent">.</span></div>
+    <div class="badge">
+      <div class="sdot" id="sdot"></div>
+      <span id="stxt">OFFLINE</span>
+    </div>
+  </header>
+
+  <!-- Camera -->
+
+  <div class="cam-card" id="camCard">
+    <div class="cam-placeholder" id="placeholder">
+      <div class="cam-placeholder-icon">🎥</div>
+      <div class="cam-placeholder-text">TAP TO ACTIVATE CAMERA</div>
+    </div>
+
+```
+<video id="video" autoplay muted playsinline></video>
+<canvas id="overlay"></canvas>
+
+<div class="scan-wrap" id="scanWrap"><div class="scan-bar"></div></div>
+<div class="no-face" id="noFace">NO FACE DETECTED</div>
+
+<button class="start-btn" id="startBtn" onclick="init()">
+  <div class="start-inner">
+    <div class="start-icon" id="startIcon">👁</div>
+    <div class="start-label" id="startLabel">START DETECTION</div>
+    <div class="start-sub" id="startSub">Camera access required</div>
+  </div>
+</button>
+```
+
+  </div>
+
+  <!-- Cards -->
+
+  <div class="cards">
+
+```
+<!-- Emotion -->
+<div class="card emo-card">
+  <div class="card-tag">Emotion Analysis</div>
+  <div class="emo-top">
+    <div class="emo-emoji" id="emoEmoji">—</div>
+    <div class="emo-mid">
+      <div class="emo-name" id="emoName" style="color:var(--muted)">Waiting…</div>
+      <div class="emo-conf" id="emoConf">Activate camera to begin</div>
+    </div>
+    <div class="ring-wrap">
+      <svg width="58" height="58" viewBox="0 0 58 58">
+        <circle class="rb" cx="29" cy="29" r="23"/>
+        <circle class="rf" id="ringFg" cx="29" cy="29" r="23"/>
+      </svg>
+      <div class="ring-pct" id="ringPct">0%</div>
+    </div>
+  </div>
+  <div class="bars" id="barsGrid"></div>
+</div>
+
+<!-- Gesture -->
+<div class="card">
+  <div class="card-tag">Gesture</div>
+  <div class="gest-emoji" id="gestEmoji">—</div>
+  <div class="gest-name" id="gestName">Inactive</div>
+  <div class="gest-meta" id="gestMeta">—</div>
+</div>
+
+<!-- History -->
+<div class="card">
+  <div class="card-tag">History</div>
+  <div class="hist-scroll" id="histScroll">
+    <div class="hist-empty" id="histEmpty">No detections yet</div>
+  </div>
+</div>
+```
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- TF + Face Detection -->
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-detection@1.0.2/dist/face-detection.min.js"></script>
+
+<script>
+// ── CONFIG ─────────────────────────────────────────────────────────────────
+const EMOTIONS = {
+  happy:     { label:'Happy',     emoji:'😄', color:'#ffd166' },
+  surprised: { label:'Surprised', emoji:'😲', color:'#ff9f40' },
+  neutral:   { label:'Neutral',   emoji:'😐', color:'#a0aec0' },
+  sad:       { label:'Sad',       emoji:'😢', color:'#74b3ff' },
+  angry:     { label:'Angry',     emoji:'😠', color:'#ff6b6b' },
+  fearful:   { label:'Fearful',   emoji:'😨', color:'#c77dff' },
+  disgusted: { label:'Disgusted', emoji:'🤢', color:'#5effa0' },
+};
+
+// ── DOM ────────────────────────────────────────────────────────────────────
+const video    = document.getElementById('video');
+const canvas   = document.getElementById('overlay');
+const ctx      = canvas.getContext('2d');
+const sdot     = document.getElementById('sdot');
+const stxt     = document.getElementById('stxt');
+const startBtn = document.getElementById('startBtn');
+const placeholder = document.getElementById('placeholder');
+const scanWrap = document.getElementById('scanWrap');
+const noFace   = document.getElementById('noFace');
+const emoEmoji = document.getElementById('emoEmoji');
+const emoName  = document.getElementById('emoName');
+const emoConf  = document.getElementById('emoConf');
+const ringFg   = document.getElementById('ringFg');
+const ringPct  = document.getElementById('ringPct');
+const gestEmoji= document.getElementById('gestEmoji');
+const gestName = document.getElementById('gestName');
+const gestMeta = document.getElementById('gestMeta');
+const histScroll = document.getElementById('histScroll');
+const toastEl  = document.getElementById('toast');
+
+// ── BUILD BARS ─────────────────────────────────────────────────────────────
+const barsGrid = document.getElementById('barsGrid');
+Object.entries(EMOTIONS).forEach(([k, v]) => {
+  barsGrid.innerHTML += `
+    <div class="bar-row">
+      <div class="bar-name">${v.label}</div>
+      <div class="bar-track"><div class="bar-fill" id="bf-${k}" style="background:${v.color}"></div></div>
+      <div class="bar-pct" id="bp-${k}">0%</div>
+    </div>`;
+});
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let detector    = null;
+let prevBox     = null;
+let movHist     = [];
+let faceHHist   = [];
+let smoothed    = { happy:.01, surprised:.01, neutral:.9, sad:.01, angry:.01, fearful:.01, disgusted:.01 };
+let lastHistMs  = 0;
+let running     = false;
+
+// ── TOAST ──────────────────────────────────────────────────────────────────
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('on');
+  setTimeout(() => toastEl.classList.remove('on'), 4000);
+}
+
+// ── EMOTION ESTIMATION ─────────────────────────────────────────────────────
+// Lightweight heuristic using face box geometry + motion (no expression model needed).
+function estimateEmotion(box) {
+  let move = 0;
+  if (prevBox) {
+    const dx = box.xMin - prevBox.xMin, dy = box.yMin - prevBox.yMin;
+    move = Math.sqrt(dx*dx + dy*dy);
+  }
+  prevBox = { xMin: box.xMin, yMin: box.yMin };
+
+  movHist.push(move); if (movHist.length > 20) movHist.shift();
+  const avgMove = movHist.reduce((a,b)=>a+b,0) / movHist.length;
+
+  faceHHist.push(box.height); if (faceHHist.length > 30) faceHHist.shift();
+  const avgH = faceHHist.reduce((a,b)=>a+b,0) / faceHHist.length || box.height;
+  const hRatio = box.height / avgH;
+
+  const aspect = box.width / (box.height || 1); // ~0.7-1.0 typical
+
+  const raw = {
+    happy:     clamp((aspect - 0.72) * 2.8 + (avgMove > 3 ? .15 : 0)),
+    surprised: clamp((hRatio - 1.02) * 5  + (avgMove > 8 ? .25 : 0)),
+    neutral:   clamp(1 - Math.abs(aspect - 0.84) * 3.5 - avgMove * .035),
+    sad:       clamp((0.76 - aspect) * 3   + (avgMove < .8 ? .08 : 0)),
+    angry:     clamp(avgMove * .045 + (aspect < 0.71 ? .18 : 0)),
+    fearful:   clamp((hRatio - 1.04) * 4.5),
+    disgusted: clamp((0.79 - aspect) * 2.2),
+  };
+
+  const sum = Object.values(raw).reduce((a,b)=>a+b,0) || 1;
+  const a = .14; // smoothing
+  Object.keys(raw).forEach(k => smoothed[k] = smoothed[k]*(1-a) + (raw[k]/sum)*a);
+
+  // normalise
+  const ss = Object.values(smoothed).reduce((a,b)=>a+b,0)||1;
+  const out = {};
+  Object.keys(smoothed).forEach(k => out[k] = smoothed[k]/ss);
+  return out;
+}
+
+function clamp(v) { return Math.max(0, Math.min(1, v||0)); }
+
+// ── GESTURE ────────────────────────────────────────────────────────────────
+function pickGesture(e) {
+  if (e.happy     > .36) return { emoji:'😊', name:'Smiling',  meta:'Happy expression' };
+  if (e.surprised > .33) return { emoji:'😮', name:'Wide Eyes', meta:'Surprise detected' };
+  if (e.angry     > .28) return { emoji:'😤', name:'Frowning',  meta:'Tension detected' };
+  if (e.sad       > .30) return { emoji:'😢', name:'Downcast',  meta:'Sadness signal' };
+  if (e.fearful   > .28) return { emoji:'😰', name:'Alarmed',   meta:'Fear response' };
+  if (e.disgusted > .26) return { emoji:'🤢', name:'Aversion',  meta:'Disgust signal' };
+  return { emoji:'😐', name:'Neutral', meta:'No strong gesture' };
+}
+
+// ── DRAW ───────────────────────────────────────────────────────────────────
+function drawBox(box, color) {
+  const sx = canvas.width  / video.videoWidth;
+  const sy = canvas.height / video.videoHeight;
+  const mx = canvas.width - (box.xMin + box.width) * sx;
+  const my = box.yMin * sy;
+  const mw = box.width * sx;
+  const mh = box.height * sy;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 14;
+
+  const cs = Math.min(mw, mh) * 0.18;
+  [[mx,my,mx+cs,my,mx,my,mx,my+cs],
+   [mx+mw-cs,my,mx+mw,my,mx+mw,my,mx+mw,my+cs],
+   [mx,my+mh-cs,mx,my+mh,mx,my+mh,mx+cs,my+mh],
+   [mx+mw-cs,my+mh,mx+mw,my+mh,mx+mw,my+mh,mx+mw,my+mh-cs]
+  ].forEach(([x1,y1,x2,y2,x3,y3,x4,y4]) => {
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x3,y3); ctx.lineTo(x4,y4); ctx.stroke();
+  });
+
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.arc(mx+mw/2, my+mh/2, 3, 0, Math.PI*2);
+  ctx.fillStyle = color; ctx.fill();
+}
+
+// ── UPDATE UI ──────────────────────────────────────────────────────────────
+// ring circumference = 2π × 23 ≈ 144.5 → use 144
+function updateUI(exprs, box) {
+  const sorted = Object.entries(exprs).sort((a,b)=>b[1]-a[1]);
+  const [topK, topV] = sorted[0];
+  const emo = EMOTIONS[topK];
+  const conf = Math.round(topV * 100);
+
+  emoEmoji.textContent = emo.emoji;
+  emoName.textContent  = emo.label;
+  emoName.style.color  = emo.color;
+  emoConf.textContent  = `${conf}% confidence`;
+
+  const offset = 144 - 144 * topV;
+  ringFg.style.strokeDashoffset = offset;
+  ringFg.style.stroke = emo.color;
+  ringPct.textContent = conf + '%';
+
+  Object.entries(exprs).forEach(([k, v]) => {
+    const bf = document.getElementById('bf-'+k);
+    const bp = document.getElementById('bp-'+k);
+    if (bf) bf.style.width = (v*100).toFixed(1)+'%';
+    if (bp) bp.textContent = Math.round(v*100)+'%';
+  });
+
+  const g = pickGesture(exprs);
+  gestEmoji.textContent = g.emoji;
+  gestName.textContent  = g.name;
+  gestMeta.textContent  = g.meta;
+
+  const now = Date.now();
+  if (now - lastHistMs > 4000 && conf > 28) {
+    lastHistMs = now;
+    addHistory(emo, g);
+  }
+
+  drawBox(box, emo.color);
+}
+
+function clearUI() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  emoEmoji.textContent = '—';
+  emoName.textContent  = 'No face';
+  emoName.style.color  = 'var(--muted)';
+  emoConf.textContent  = 'Point camera at your face';
+  ringFg.style.strokeDashoffset = 144;
+  ringPct.textContent = '0%';
+  gestEmoji.textContent = '—';
+  gestName.textContent  = 'Inactive';
+  gestMeta.textContent  = '—';
+  Object.keys(EMOTIONS).forEach(k => {
+    const bf = document.getElementById('bf-'+k);
+    const bp = document.getElementById('bp-'+k);
+    if (bf) bf.style.width = '0%';
+    if (bp) bp.textContent = '0%';
+  });
+}
+
+// ── HISTORY ────────────────────────────────────────────────────────────────
+function addHistory(emo, g) {
+  const empty = document.getElementById('histEmpty');
+  if (empty) empty.remove();
+  const t = new Date().toTimeString().slice(0,8);
+  const item = document.createElement('div');
+  item.className = 'hist-item';
+  item.innerHTML = `<div class="h-t">${t}</div>
+    <div class="h-e" style="color:${emo.color}">${emo.emoji} ${emo.label}</div>
+    <div class="h-g">${g.emoji} ${g.name}</div>`;
+  histScroll.insertBefore(item, histScroll.firstChild);
+  if (histScroll.children.length > 18) histScroll.removeChild(histScroll.lastChild);
+}
+
+// ── DETECTION LOOP ─────────────────────────────────────────────────────────
+async function loop() {
+  if (!running) return;
+  if (detector && video.readyState >= 2) {
+    try {
+      const faces = await detector.estimateFaces(video);
+      if (faces && faces.length > 0) {
+        noFace.style.display = 'none';
+        updateUI(estimateEmotion(faces[0].box), faces[0].box);
+      } else {
+        noFace.style.display = 'block';
+        clearUI();
+      }
+    } catch(_) {}
+  }
+  requestAnimationFrame(loop);
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+async function init() {
+  startBtn.style.pointerEvents = 'none';
+  sdot.className = 'sdot load'; stxt.textContent = 'LOADING';
+
+  const icon  = document.getElementById('startIcon');
+  const label = document.getElementById('startLabel');
+  const sub   = document.getElementById('startSub');
+
+  icon.textContent  = '⏳';
+  label.textContent = 'LOADING MODEL…';
+  sub.textContent   = 'Please wait';
+
+  // Load model
+  try {
+    detector = await faceDetection.createDetector(
+      faceDetection.SupportedModels.MediaPipeFaceDetector,
+      { runtime: 'tfjs', maxFaces: 1 }
+    );
+  } catch (e) {
+    toast('Failed to load AI model. Check your internet connection.');
+    sdot.className = 'sdot'; stxt.textContent = 'ERROR';
+    icon.textContent='⚠️'; label.textContent='RETRY'; sub.textContent='Model load failed';
+    startBtn.style.pointerEvents = 'auto';
+    return;
+  }
+
+  // Camera
+  icon.textContent  = '📷';
+  label.textContent = 'REQUESTING CAMERA…';
+  sub.textContent   = '';
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    video.srcObject = stream;
+    await new Promise(res => { video.onloadedmetadata = res; });
+    await video.play();
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    startBtn.style.display = 'none';
+    placeholder.style.display = 'none';
+    scanWrap.classList.add('on');
+    sdot.className = 'sdot live'; stxt.textContent = 'LIVE';
+    running = true;
+    loop();
+  } catch (e) {
+    let msg = 'Camera access denied.';
+    if (e.name === 'NotFoundError')   msg = 'No camera found on this device.';
+    if (e.name === 'NotAllowedError') msg = 'Camera denied — allow access in browser settings.';
+    toast(msg);
+    sdot.className = 'sdot'; stxt.textContent = 'OFFLINE';
+    icon.textContent='👁'; label.textContent='START DETECTION'; sub.textContent='Camera access required';
+    startBtn.style.pointerEvents = 'auto';
+  }
+}
+</script>
+
+</body>
+</html>
