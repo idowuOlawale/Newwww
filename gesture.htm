@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Aura — Real-Time Emotion AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#060810;--s1:rgba(255,255,255,.04);--s2:rgba(255,255,255,.07);
+  --b1:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13);
+  --txt:#eef1ff;--muted:#556080;--dim:#151c30;
+  --accent:#4f8ef7;--glow:rgba(79,142,247,.22);
+  --happy:#ffd166;--surprised:#ff9f40;--neutral:#94a3b8;
+  --sad:#60a5fa;--angry:#f87171;--fearful:#c084fc;--disgusted:#34d399;
+}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Plus Jakarta Sans',sans-serif;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(79,142,247,.022) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(79,142,247,.022) 1px,transparent 1px);
+  background-size:44px 44px;pointer-events:none;z-index:0;}
+.orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0;}
+.o1{width:500px;height:500px;background:rgba(79,142,247,.065);top:-150px;right:-100px;}
+.o2{width:350px;height:350px;background:rgba(192,132,252,.05);bottom:50px;left:-90px;}
+
+.app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;
+max-width:860px;margin:0 auto;padding:1rem 1rem 2.5rem;}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0 1.1rem;}
+.logo{font-family:‘DM Mono’,monospace;font-size:1rem;letter-spacing:.22em;font-weight:500;}
+.logo b{color:var(–accent);}
+.badge{display:flex;align-items:center;gap:.45rem;padding:.3rem .85rem;
+background:var(–s1);border:1px solid var(–b1);border-radius:999px;
+font-family:‘DM Mono’,monospace;font-size:.58rem;letter-spacing:.13em;color:var(–muted);}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(–muted);transition:all .4s;}
+.sdot.live{background:#4ade80;box-shadow:0 0 7px #4ade80;animation:blink 2s infinite;}
+.sdot.load{background:var(–happy);box-shadow:0 0 7px var(–happy);animation:blink .5s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* CAMERA */
+.cam-wrap{position:relative;background:#000;border:1px solid var(–b1);border-radius:20px;
+overflow:hidden;aspect-ratio:4/3;width:100%;}
+.cam-wrap video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;}
+#cvs{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transform:scaleX(-1);}
+
+.cam-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+justify-content:center;gap:.8rem;background:linear-gradient(135deg,#0b0e1c,#060810);}
+.cam-ph-icon{width:68px;height:68px;border-radius:50%;background:var(–s2);border:1px solid var(–b2);
+display:flex;align-items:center;justify-content:center;font-size:1.7rem;}
+.cam-ph-txt{font-size:.68rem;color:var(–muted);letter-spacing:.1em;}
+
+.scan{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:20px;opacity:0;transition:opacity .6s;}
+.scan.on{opacity:1;}
+.scan-bar{position:absolute;left:0;right:0;height:2px;
+background:linear-gradient(90deg,transparent,var(–accent),transparent);
+box-shadow:0 0 16px var(–accent);animation:sw 3s linear infinite;}
+@keyframes sw{0%{top:0%}100%{top:100%}}
+
+.no-face-tag{position:absolute;bottom:1rem;left:50%;transform:translateX(-50%);
+padding:.35rem 1rem;background:rgba(6,8,16,.88);border:1px solid var(–b2);border-radius:999px;
+font-family:‘DM Mono’,monospace;font-size:.6rem;letter-spacing:.1em;color:var(–muted);
+display:none;white-space:nowrap;backdrop-filter:blur(12px);}
+
+.start-btn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+background:transparent;border:none;cursor:pointer;z-index:5;}
+.start-in{display:flex;flex-direction:column;align-items:center;gap:.85rem;
+padding:1.5rem 2.5rem;background:rgba(6,8,16,.78);border:1px solid var(–b2);
+border-radius:18px;backdrop-filter:blur(16px);transition:all .25s;}
+.start-btn:hover .start-in{background:rgba(79,142,247,.1);border-color:rgba(79,142,247,.5);
+box-shadow:0 0 40px var(–glow);}
+.start-icon-wrap{width:56px;height:56px;border-radius:50%;
+background:linear-gradient(135deg,#4f8ef7,#3063cc);
+display:flex;align-items:center;justify-content:center;font-size:1.5rem;
+box-shadow:0 0 28px var(–glow);}
+.start-lbl{font-size:.8rem;font-weight:700;letter-spacing:.13em;}
+.start-sub{font-size:.62rem;color:var(–muted);}
+
+/* LOADING BAR under camera */
+.load-bar-wrap{height:3px;background:var(–dim);border-radius:2px;overflow:hidden;margin-top:.5rem;display:none;}
+.load-bar-fill{height:100%;background:linear-gradient(90deg,var(–accent),#74b3ff);
+border-radius:2px;width:0%;transition:width .4s ease;}
+
+/* CARDS */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem;}
+.card{background:var(–s1);border:1px solid var(–b1);border-radius:16px;padding:1.1rem;}
+.card-tag{font-family:‘DM Mono’,monospace;font-size:.58rem;letter-spacing:.15em;
+color:var(–muted);text-transform:uppercase;margin-bottom:.85rem;}
+
+/* EMOTION CARD */
+.emo-card{grid-column:span 2;}
+.emo-top{display:flex;align-items:center;gap:1rem;}
+.emo-emoji{font-size:3.2rem;line-height:1;flex-shrink:0;transition:all .35s;min-width:3.5rem;}
+.emo-mid{flex:1;min-width:0;}
+.emo-name{font-size:1.4rem;font-weight:800;transition:color .35s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.emo-conf{font-family:‘DM Mono’,monospace;font-size:.65rem;color:var(–muted);margin-top:.2rem;}
+
+/* ring — r=23, circ≈144.5 */
+.ring-w{position:relative;flex-shrink:0;width:60px;height:60px;}
+.ring-w svg{transform:rotate(-90deg);}
+.rb{fill:none;stroke:var(–dim);stroke-width:4;}
+.rf{fill:none;stroke-width:4;stroke-linecap:round;stroke-dasharray:145;stroke-dashoffset:145;
+transition:stroke-dashoffset .5s cubic-bezier(.4,0,.2,1),stroke .35s;}
+.ring-n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+font-family:‘DM Mono’,monospace;font-size:.6rem;color:var(–muted);}
+
+/* bars */
+.bars{display:grid;grid-template-columns:1fr 1fr;gap:.4rem 1.2rem;margin-top:1rem;}
+.brow{display:flex;align-items:center;gap:.5rem;}
+.bn{font-family:‘DM Mono’,monospace;font-size:.56rem;color:var(–muted);width:50px;flex-shrink:0;text-transform:uppercase;}
+.bt{flex:1;height:3px;background:var(–dim);border-radius:2px;overflow:hidden;}
+.bf{height:100%;border-radius:2px;width:0%;transition:width .45s cubic-bezier(.4,0,.2,1);}
+.bp{font-family:‘DM Mono’,monospace;font-size:.55rem;color:var(–muted);width:24px;text-align:right;}
+
+/* GESTURE CARD */
+.ge{font-size:2.5rem;line-height:1;min-height:3rem;transition:all .3s;margin-bottom:.4rem;}
+.gn{font-size:.95rem;font-weight:700;min-height:1.1rem;}
+.gm{font-family:‘DM Mono’,monospace;font-size:.6rem;color:var(–muted);margin-top:.25rem;}
+
+/* HISTORY CARD */
+.hs{overflow-y:auto;max-height:145px;}
+.hs::-webkit-scrollbar{width:0;}
+.hemp{font-family:‘DM Mono’,monospace;font-size:.62rem;color:var(–dim);text-align:center;padding:1.5rem 0;}
+.hi{display:flex;align-items:center;gap:.6rem;padding:.38rem 0;border-bottom:1px solid var(–b1);animation:fi .25s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+.ht{font-family:‘DM Mono’,monospace;font-size:.55rem;color:var(–muted);width:44px;flex-shrink:0;}
+.he{font-size:.7rem;font-weight:700;flex:1;}
+.hg{font-size:.62rem;color:var(–muted);}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(12px);
+background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.28);color:#fca5a5;
+padding:.55rem 1.2rem;border-radius:999px;font-family:‘DM Mono’,monospace;
+font-size:.65rem;letter-spacing:.08em;opacity:0;transition:all .3s;
+z-index:200;white-space:nowrap;pointer-events:none;backdrop-filter:blur(12px);}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* STATUS MSG */
+.status-msg{font-family:‘DM Mono’,monospace;font-size:.65rem;color:var(–muted);
+text-align:center;padding:.5rem;display:none;}
+
+@media(max-width:520px){
+.cam-wrap{aspect-ratio:3/4;border-radius:16px;}
+.bars{grid-template-columns:1fr;}
+.emo-name{font-size:1.15rem;}
+.start-in{padding:1.2rem 1.8rem;}
+}
+</style>
+
+</head>
+<body>
+<div class="orb o1"></div>
+<div class="orb o2"></div>
+<div class="app">
+
+  <header>
+    <div class="logo">AURA<b>.</b></div>
+    <div class="badge"><div class="sdot" id="sdot"></div><span id="stxt">OFFLINE</span></div>
+  </header>
+
+  <!-- Camera -->
+
+  <div class="cam-wrap" id="camWrap">
+    <div class="cam-ph" id="camPh">
+      <div class="cam-ph-icon">🎥</div>
+      <div class="cam-ph-txt">TAP TO START REAL-TIME DETECTION</div>
+    </div>
+    <video id="vid" autoplay muted playsinline></video>
+    <canvas id="cvs"></canvas>
+    <div class="scan" id="scan"><div class="scan-bar"></div></div>
+    <div class="no-face-tag" id="noFaceTag">NO FACE DETECTED</div>
+    <button class="start-btn" id="startBtn" onclick="init()">
+      <div class="start-in">
+        <div class="start-icon-wrap" id="sIcon">👁</div>
+        <div class="start-lbl" id="sLbl">START DETECTION</div>
+        <div class="start-sub" id="sSub">Uses real expression AI model</div>
+      </div>
+    </button>
+  </div>
+  <div class="load-bar-wrap" id="loadBarWrap"><div class="load-bar-fill" id="loadBarFill"></div></div>
+  <div class="status-msg" id="statusMsg"></div>
+
+  <!-- Cards -->
+
+  <div class="cards">
+    <!-- Emotion -->
+    <div class="card emo-card">
+      <div class="card-tag">Real-Time Emotion Analysis</div>
+      <div class="emo-top">
+        <div class="emo-emoji" id="eEmoji">—</div>
+        <div class="emo-mid">
+          <div class="emo-name" id="eName" style="color:var(--muted)">Waiting…</div>
+          <div class="emo-conf" id="eConf">Activate camera to begin</div>
+        </div>
+        <div class="ring-w">
+          <svg width="60" height="60" viewBox="0 0 60 60">
+            <circle class="rb" cx="30" cy="30" r="23"/>
+            <circle class="rf" id="rf" cx="30" cy="30" r="23"/>
+          </svg>
+          <div class="ring-n" id="rn">0%</div>
+        </div>
+      </div>
+      <div class="bars" id="barsGrid"></div>
+    </div>
+    <!-- Gesture -->
+    <div class="card">
+      <div class="card-tag">Gesture</div>
+      <div class="ge" id="gEmo">—</div>
+      <div class="gn" id="gName">Inactive</div>
+      <div class="gm" id="gMeta">—</div>
+    </div>
+    <!-- History -->
+    <div class="card">
+      <div class="card-tag">History</div>
+      <div class="hs" id="hist"><div class="hemp" id="hemp">No detections yet</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- face-api.js — the correct working build from vladmandic -->
+
+<script>
+// Dynamically load face-api to handle errors gracefully
+window.FACE_API_LOADED = false;
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js"
+  onload="window.FACE_API_LOADED=true;console.log('face-api loaded')"
+  onerror="window.FACE_API_ERROR=true;console.error('face-api failed')">
+</script>
+
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────────────────
+const EMOTIONS = {
+  happy:     { label:'Happy',     emoji:'😄', color:'#ffd166' },
+  surprised: { label:'Surprised', emoji:'😲', color:'#ff9f40' },
+  neutral:   { label:'Neutral',   emoji:'😐', color:'#94a3b8' },
+  sad:       { label:'Sad',       emoji:'😢', color:'#60a5fa' },
+  angry:     { label:'Angry',     emoji:'😠', color:'#f87171' },
+  fearful:   { label:'Fearful',   emoji:'😨', color:'#c084fc' },
+  disgusted: { label:'Disgusted', emoji:'🤢', color:'#34d399' },
+};
+
+const GESTURES = [
+  { name:'Big Smile',    emoji:'😁', meta:'Open expression',    check: e => e.happy > .55 },
+  { name:'Smiling',      emoji:'😊', meta:'Positive mood',      check: e => e.happy > .30 },
+  { name:'Eyes Wide',    emoji:'😲', meta:'Surprise detected',  check: e => e.surprised > .40 },
+  { name:'Worried',      emoji:'😟', meta:'Negative signal',    check: e => e.fearful > .25 || e.sad > .35 },
+  { name:'Frowning',     emoji:'😤', meta:'Tension detected',   check: e => e.angry > .25 },
+  { name:'Downcast',     emoji:'😞', meta:'Sadness signal',     check: e => e.sad > .25 },
+  { name:'Aversion',     emoji:'🤢', meta:'Disgust signal',     check: e => e.disgusted > .22 },
+  { name:'Neutral Face', emoji:'😐', meta:'Resting expression', check: e => e.neutral > .45 },
+];
+
+// ─── DOM ───────────────────────────────────────────────────────────────────
+const vid       = document.getElementById('vid');
+const cvs       = document.getElementById('cvs');
+const ctx       = cvs.getContext('2d');
+const sdot      = document.getElementById('sdot');
+const stxt      = document.getElementById('stxt');
+const startBtn  = document.getElementById('startBtn');
+const camPh     = document.getElementById('camPh');
+const scan      = document.getElementById('scan');
+const noFaceTag = document.getElementById('noFaceTag');
+const eEmoji    = document.getElementById('eEmoji');
+const eName     = document.getElementById('eName');
+const eConf     = document.getElementById('eConf');
+const rf        = document.getElementById('rf');
+const rn        = document.getElementById('rn');
+const gEmo      = document.getElementById('gEmo');
+const gName     = document.getElementById('gName');
+const gMeta     = document.getElementById('gMeta');
+const hist      = document.getElementById('hist');
+const toastEl   = document.getElementById('toast');
+const loadBarWrap  = document.getElementById('loadBarWrap');
+const loadBarFill  = document.getElementById('loadBarFill');
+const statusMsg    = document.getElementById('statusMsg');
+const sIcon = document.getElementById('sIcon');
+const sLbl  = document.getElementById('sLbl');
+const sSub  = document.getElementById('sSub');
+
+// ─── BUILD BARS ────────────────────────────────────────────────────────────
+const barsGrid = document.getElementById('barsGrid');
+Object.entries(EMOTIONS).forEach(([k,v]) => {
+  barsGrid.innerHTML += `<div class="brow">
+    <div class="bn">${v.label}</div>
+    <div class="bt"><div class="bf" id="bf-${k}" style="background:${v.color}"></div></div>
+    <div class="bp" id="bp-${k}">0%</div>
+  </div>`;
+});
+
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+function toast(msg, dur=4500) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('on');
+  setTimeout(() => toastEl.classList.remove('on'), dur);
+}
+
+function setLoadBar(pct) {
+  loadBarWrap.style.display = 'block';
+  loadBarFill.style.width = pct + '%';
+}
+
+function setStatus(msg) {
+  statusMsg.style.display = msg ? 'block' : 'none';
+  statusMsg.textContent = msg;
+}
+
+let lastHistMs = 0;
+let running = false;
+let faceApiReady = false;
+
+// ─── DRAW FACE BOX ─────────────────────────────────────────────────────────
+function drawBox(det, color) {
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+  const box = det.detection.box;
+  const sx = cvs.width  / vid.videoWidth;
+  const sy = cvs.height / vid.videoHeight;
+  // mirror x because video is CSS-mirrored
+  const mx = cvs.width - (box.x + box.width) * sx;
+  const my = box.y * sy;
+  const mw = box.width  * sx;
+  const mh = box.height * sy;
+
+  const cs = Math.min(mw, mh) * 0.16;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 16;
+
+  [[mx,my,mx+cs,my,mx,my,mx,my+cs],
+   [mx+mw-cs,my,mx+mw,my,mx+mw,my,mx+mw,my+cs],
+   [mx,my+mh-cs,mx,my+mh,mx,my+mh,mx+cs,my+mh],
+   [mx+mw-cs,my+mh,mx+mw,my+mh,mx+mw,my+mh,mx+mw,my+mh-cs]
+  ].forEach(([x1,y1,x2,y2,x3,y3,x4,y4])=>{
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x3,y3);ctx.lineTo(x4,y4);ctx.stroke();
+  });
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.arc(mx+mw/2, my+mh/2, 3, 0, Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+// ─── UPDATE UI ─────────────────────────────────────────────────────────────
+function updateUI(det) {
+  const exprs = det.expressions; // object: { happy: 0.x, sad: 0.x, … }
+  const sorted = Object.entries(exprs).sort((a,b)=>b[1]-a[1]);
+  const [topK, topV] = sorted[0];
+  const emo = EMOTIONS[topK] || EMOTIONS.neutral;
+  const conf = Math.round(topV * 100);
+
+  // Emotion
+  eEmoji.textContent = emo.emoji;
+  eName.textContent  = emo.label;
+  eName.style.color  = emo.color;
+  eConf.textContent  = `${conf}% confidence — LIVE`;
+
+  // Ring circ = 2π×23 ≈ 144.5
+  rf.style.strokeDashoffset = 145 - 145 * topV;
+  rf.style.stroke = emo.color;
+  rn.textContent  = conf + '%';
+
+  // Bars
+  Object.entries(exprs).forEach(([k,v]) => {
+    const b = document.getElementById('bf-'+k);
+    const p = document.getElementById('bp-'+k);
+    if (b) b.style.width = (v*100).toFixed(1)+'%';
+    if (p) p.textContent = Math.round(v*100)+'%';
+  });
+
+  // Gesture
+  const g = GESTURES.find(g=>g.check(exprs)) || GESTURES[GESTURES.length-1];
+  gEmo.textContent  = g.emoji;
+  gName.textContent = g.name;
+  gMeta.textContent = g.meta;
+
+  // History every 4s
+  if (Date.now() - lastHistMs > 4000 && conf > 25) {
+    lastHistMs = Date.now();
+    addHistory(emo, g);
+  }
+
+  drawBox(det, emo.color);
+}
+
+function clearUI() {
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  eEmoji.textContent='—'; eName.textContent='No face'; eName.style.color='var(--muted)';
+  eConf.textContent='Point camera at your face';
+  rf.style.strokeDashoffset=145; rn.textContent='0%';
+  gEmo.textContent='—'; gName.textContent='Inactive'; gMeta.textContent='—';
+  Object.keys(EMOTIONS).forEach(k=>{
+    const b=document.getElementById('bf-'+k),p=document.getElementById('bp-'+k);
+    if(b)b.style.width='0%';if(p)p.textContent='0%';
+  });
+}
+
+function addHistory(emo, g) {
+  const emp = document.getElementById('hemp');
+  if (emp) emp.remove();
+  const t = new Date().toTimeString().slice(0,8);
+  const el = document.createElement('div');
+  el.className='hi';
+  el.innerHTML=`<div class="ht">${t}</div>
+    <div class="he" style="color:${emo.color}">${emo.emoji} ${emo.label}</div>
+    <div class="hg">${g.emoji} ${g.name}</div>`;
+  hist.insertBefore(el, hist.firstChild);
+  if (hist.children.length > 18) hist.removeChild(hist.lastChild);
+}
+
+// ─── DETECTION LOOP ────────────────────────────────────────────────────────
+let frameCount = 0;
+async function loop() {
+  if (!running) return;
+  if (vid.readyState >= 2) {
+    frameCount++;
+    // Run detection every other frame for performance
+    if (frameCount % 2 === 0) {
+      try {
+        const det = await faceapi
+          .detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.35 }))
+          .withFaceExpressions();
+
+        if (det) {
+          noFaceTag.style.display = 'none';
+          updateUI(det);
+        } else {
+          noFaceTag.style.display = 'block';
+          clearUI();
+        }
+      } catch(e) {
+        // skip frame
+      }
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+async function init() {
+  startBtn.style.pointerEvents = 'none';
+  sdot.className = 'sdot load';
+  stxt.textContent = 'LOADING';
+
+  // Wait for face-api script if still loading
+  let attempts = 0;
+  while (!window.FACE_API_LOADED && !window.FACE_API_ERROR && attempts < 30) {
+    await new Promise(r => setTimeout(r, 300));
+    attempts++;
+  }
+
+  if (window.FACE_API_ERROR || !window.faceapi) {
+    toast('Could not load AI library. Check your internet and retry.');
+    sdot.className='sdot'; stxt.textContent='ERROR';
+    sIcon.textContent='⚠️'; sLbl.textContent='RETRY'; sSub.textContent='Library failed to load';
+    startBtn.style.pointerEvents='auto'; return;
+  }
+
+  // Load models
+  sIcon.textContent='⏳'; sLbl.textContent='LOADING MODELS'; sSub.textContent='Downloading expression AI…';
+  setLoadBar(5);
+  setStatus('Loading face detection model…');
+
+  const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model';
+
+  try {
+    setLoadBar(10); setStatus('Loading TinyFaceDetector…');
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+
+    setLoadBar(60); setStatus('Loading expression model…');
+    await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+
+    setLoadBar(100); setStatus('');
+    faceApiReady = true;
+  } catch(e) {
+    console.error('Model load error:', e);
+    toast('Model download failed. Check internet connection and retry.');
+    sdot.className='sdot'; stxt.textContent='ERROR';
+    sIcon.textContent='⚠️'; sLbl.textContent='RETRY'; sSub.textContent='Model load failed';
+    startBtn.style.pointerEvents='auto';
+    loadBarWrap.style.display='none'; setStatus(''); return;
+  }
+
+  // Camera
+  sIcon.textContent='📷'; sLbl.textContent='REQUESTING CAMERA'; sSub.textContent='';
+  setStatus('Opening camera…');
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:'user', width:{ ideal:640 }, height:{ ideal:480 } }
+    });
+    vid.srcObject = stream;
+    await new Promise(res => { vid.onloadedmetadata = res; });
+    await vid.play();
+
+    cvs.width  = vid.videoWidth;
+    cvs.height = vid.videoHeight;
+
+    startBtn.style.display = 'none';
+    camPh.style.display    = 'none';
+    scan.classList.add('on');
+    loadBarWrap.style.display = 'none';
+    setStatus('');
+
+    sdot.className='sdot live'; stxt.textContent='LIVE';
+    running = true;
+    loop();
+
+  } catch(e) {
+    let msg = 'Camera access denied.';
+    if (e.name==='NotFoundError')   msg = 'No camera found on this device.';
+    if (e.name==='NotAllowedError') msg = 'Camera denied — allow in browser settings.';
+    toast(msg);
+    sdot.className='sdot'; stxt.textContent='OFFLINE';
+    sIcon.textContent='👁'; sLbl.textContent='START DETECTION'; sSub.textContent='Camera access required';
+    startBtn.style.pointerEvents='auto';
+    loadBarWrap.style.display='none'; setStatus('');
+  }
+}
+</script>
+
+</body>
+</html>
