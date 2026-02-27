@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SWAP — Live Face Swap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0608;
+  --s1:rgba(255,255,255,.04);
+  --s2:rgba(255,255,255,.08);
+  --b1:rgba(255,255,255,.08);
+  --b2:rgba(255,255,255,.15);
+  --txt:#f5f0ff;
+  --muted:#6b5f80;
+  --dim:#1a1020;
+  --pink:#ff2d78;
+  --purple:#9b5cf6;
+  --cyan:#00e5cc;
+  --glow-pink:rgba(255,45,120,.25);
+  --glow-purple:rgba(155,92,246,.2);
+}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Outfit',sans-serif;overflow-x:hidden;}
+
+/* Noise texture */
+body::after{
+content:’’;position:fixed;inset:0;
+background-image:url(“data:image/svg+xml,%3Csvg viewBox=‘0 0 256 256’ xmlns=‘http://www.w3.org/2000/svg’%3E%3Cfilter id=‘n’%3E%3CfeTurbulence type=‘fractalNoise’ baseFrequency=‘0.9’ numOctaves=‘4’ stitchTiles=‘stitch’/%3E%3C/filter%3E%3Crect width=‘100%25’ height=‘100%25’ filter=‘url(%23n)’ opacity=‘0.035’/%3E%3C/svg%3E”);
+pointer-events:none;z-index:999;opacity:.6;
+}
+
+/* Ambient */
+.orb{position:fixed;border-radius:50%;filter:blur(110px);pointer-events:none;z-index:0;}
+.o1{width:600px;height:600px;background:rgba(155,92,246,.08);top:-200px;left:-150px;}
+.o2{width:400px;height:400px;background:rgba(255,45,120,.07);bottom:-100px;right:-100px;}
+.o3{width:300px;height:300px;background:rgba(0,229,204,.05);top:40%;left:50%;transform:translate(-50%,-50%);}
+
+/* App */
+.app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;
+max-width:1000px;margin:0 auto;padding:1rem 1rem 3rem;}
+
+/* Header */
+header{display:flex;align-items:center;justify-content:space-between;padding:.8rem 0 1.5rem;}
+.logo{font-family:‘Bebas Neue’,sans-serif;font-size:2rem;letter-spacing:.15em;
+background:linear-gradient(135deg,#ff2d78,#9b5cf6,#00e5cc);
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.tagline{font-family:‘DM Mono’,monospace;font-size:.6rem;letter-spacing:.15em;color:var(--muted);margin-top:-.3rem;}
+.badge{display:flex;align-items:center;gap:.5rem;padding:.35rem .9rem;
+background:var(--s1);border:1px solid var(--b1);border-radius:999px;
+font-family:‘DM Mono’,monospace;font-size:.6rem;letter-spacing:.12em;color:var(--muted);}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:all .4s;}
+.sdot.live{background:#4ade80;box-shadow:0 0 8px #4ade80;animation:pulse 2s infinite;}
+.sdot.load{background:var(--pink);box-shadow:0 0 8px var(--pink);animation:pulse .5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* Main grid */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start;}
+
+/* Panels */
+.panel{background:var(--s1);border:1px solid var(--b1);border-radius:20px;overflow:hidden;
+transition:border-color .3s;}
+.panel:hover{border-color:var(--b2);}
+.panel-head{padding:.9rem 1.1rem;border-bottom:1px solid var(--b1);
+display:flex;align-items:center;justify-content:space-between;}
+.panel-title{font-family:‘DM Mono’,monospace;font-size:.62rem;letter-spacing:.18em;
+color:var(--muted);text-transform:uppercase;}
+.panel-badge{font-family:‘DM Mono’,monospace;font-size:.55rem;padding:.2rem .6rem;
+border-radius:999px;border:1px solid var(--b1);color:var(--muted);}
+.panel-badge.on{border-color:rgba(74,222,128,.3);color:#4ade80;background:rgba(74,222,128,.08);}
+.panel-badge.error{border-color:rgba(255,45,120,.3);color:var(--pink);}
+
+/* Upload zone */
+.upload-zone{
+position:relative;aspect-ratio:1;display:flex;flex-direction:column;
+align-items:center;justify-content:center;gap:1rem;cursor:pointer;
+background:linear-gradient(135deg,rgba(155,92,246,.04),rgba(255,45,120,.04));
+transition:all .3s;
+}
+.upload-zone:hover{background:linear-gradient(135deg,rgba(155,92,246,.08),rgba(255,45,120,.08));}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-zone.has-image{aspect-ratio:auto;}
+.upload-icon{
+width:72px;height:72px;border-radius:50%;
+background:linear-gradient(135deg,rgba(155,92,246,.15),rgba(255,45,120,.15));
+border:1px dashed rgba(155,92,246,.4);
+display:flex;align-items:center;justify-content:center;font-size:1.8rem;
+transition:all .3s;
+}
+.upload-zone:hover .upload-icon{transform:scale(1.05);border-color:rgba(155,92,246,.7);}
+.upload-text{font-size:.85rem;font-weight:600;color:var(--txt);}
+.upload-sub{font-family:‘DM Mono’,monospace;font-size:.62rem;color:var(--muted);text-align:center;}
+#sourcePreview{width:100%;display:none;aspect-ratio:1;object-fit:cover;}
+.source-overlay{
+position:absolute;inset:0;background:rgba(10,6,8,.7);
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;
+opacity:0;transition:opacity .3s;cursor:pointer;
+}
+.upload-zone:hover .source-overlay{opacity:1;}
+.source-overlay-txt{font-size:.75rem;font-weight:600;color:#fff;}
+.source-overlay-sub{font-family:‘DM Mono’,monospace;font-size:.6rem;color:rgba(255,255,255,.5);}
+
+/* Source face info */
+.face-info{padding:.8rem 1.1rem;display:flex;align-items:center;gap:.7rem;display:none;}
+.face-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.face-info-txt{font-family:‘DM Mono’,monospace;font-size:.62rem;color:var(--muted);}
+.face-info-txt b{color:var(--txt);}
+
+/* Camera panel */
+.cam-body{position:relative;aspect-ratio:4/3;}
+.cam-body video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;}
+.cam-body canvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);}
+#outputCanvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);}
+
+.cam-ph{position:absolute;inset:0;
+background:linear-gradient(135deg,#0f0810,#0a0608);
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;}
+.cam-ph-icon{width:64px;height:64px;border-radius:50%;
+background:linear-gradient(135deg,rgba(255,45,120,.1),rgba(155,92,246,.1));
+border:1px solid var(--b1);
+display:flex;align-items:center;justify-content:center;font-size:1.6rem;}
+.cam-ph-txt{font-family:‘DM Mono’,monospace;font-size:.65rem;color:var(--muted);letter-spacing:.1em;text-align:center;padding:0 1rem;}
+
+/* Start button */
+.start-btn{
+margin:1rem;display:flex;align-items:center;justify-content:center;gap:.75rem;
+padding:.85rem 1.5rem;border:none;border-radius:12px;cursor:pointer;
+background:linear-gradient(135deg,var(--pink),var(--purple));
+color:#fff;font-family:‘Outfit’,sans-serif;font-size:.85rem;font-weight:700;
+letter-spacing:.05em;transition:all .25s;
+box-shadow:0 4px 24px var(--glow-pink);
+}
+.start-btn:hover{transform:translateY(-2px);box-shadow:0 6px 32px var(--glow-pink);}
+.start-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.start-btn-icon{font-size:1.1rem;}
+
+/* Scan line */
+.scan-wrap{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:0;transition:opacity .6s;}
+.scan-wrap.on{opacity:1;}
+.scan-bar{position:absolute;left:0;right:0;height:2px;
+background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+box-shadow:0 0 16px var(--cyan);animation:sw 3s linear infinite;}
+@keyframes sw{0%{top:0%}100%{top:100%}}
+
+/* Output mode selector */
+.mode-bar{display:flex;gap:.5rem;padding:.8rem 1.1rem 0;}
+.mode-btn{flex:1;padding:.45rem;background:var(--s1);border:1px solid var(--b1);
+border-radius:8px;font-family:‘DM Mono’,monospace;font-size:.6rem;letter-spacing:.08em;
+color:var(--muted);cursor:pointer;transition:all .2s;text-align:center;}
+.mode-btn.active{background:linear-gradient(135deg,rgba(255,45,120,.12),rgba(155,92,246,.12));
+border-color:rgba(155,92,246,.4);color:var(--txt);}
+
+/* Progress */
+.progress-wrap{margin:0 1rem .5rem;height:3px;background:var(--dim);border-radius:2px;overflow:hidden;display:none;}
+.progress-fill{height:100%;border-radius:2px;
+background:linear-gradient(90deg,var(--pink),var(--purple),var(--cyan));
+width:0%;transition:width .4s ease;}
+.progress-label{font-family:‘DM Mono’,monospace;font-size:.6rem;color:var(--muted);
+padding:0 1rem .5rem;display:none;text-align:center;}
+
+/* Stats row */
+.stats{display:flex;gap:.5rem;padding:.8rem 1.1rem;border-top:1px solid var(--b1);}
+.stat{flex:1;text-align:center;}
+.stat-val{font-family:‘Bebas Neue’,sans-serif;font-size:1.4rem;letter-spacing:.05em;
+background:linear-gradient(135deg,var(--pink),var(--purple));
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.stat-label{font-family:‘DM Mono’,monospace;font-size:.55rem;color:var(--muted);letter-spacing:.1em;margin-top:-.1rem;}
+
+/* Instructions */
+.steps{display:flex;flex-direction:column;gap:.5rem;padding:1rem;}
+.step{display:flex;align-items:flex-start;gap:.75rem;padding:.7rem;
+background:var(--s1);border:1px solid var(--b1);border-radius:10px;}
+.step-num{width:24px;height:24px;border-radius:50%;flex-shrink:0;
+background:linear-gradient(135deg,var(--pink),var(--purple));
+display:flex;align-items:center;justify-content:center;
+font-family:‘DM Mono’,monospace;font-size:.65rem;color:#fff;font-weight:500;}
+.step-txt{font-size:.78rem;color:var(--muted);line-height:1.4;}
+.step-txt b{color:var(--txt);font-weight:600;}
+
+/* No face warning */
+.warn{position:absolute;bottom:.75rem;left:50%;transform:translateX(-50%);
+padding:.35rem 1rem;background:rgba(10,6,8,.88);border:1px solid rgba(255,45,120,.3);
+border-radius:999px;font-family:‘DM Mono’,monospace;font-size:.6rem;letter-spacing:.1em;
+color:var(--pink);display:none;white-space:nowrap;backdrop-filter:blur(10px);}
+
+/* Toast */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(12px);
+background:rgba(10,6,8,.9);border:1px solid var(--b2);color:var(--txt);
+padding:.6rem 1.3rem;border-radius:999px;font-family:‘DM Mono’,monospace;
+font-size:.65rem;letter-spacing:.08em;opacity:0;transition:all .3s;
+z-index:200;white-space:nowrap;pointer-events:none;backdrop-filter:blur(14px);}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* Screenshot flash */
+.flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:500;transition:opacity .1s;}
+.flash.on{opacity:.6;}
+
+/* Mobile */
+@media(max-width:640px){
+.grid{grid-template-columns:1fr;}
+.steps{display:none;}
+.logo{font-size:1.6rem;}
+}
+</style>
+
+</head>
+<body>
+<div class="orb o1"></div>
+<div class="orb o2"></div>
+<div class="orb o3"></div>
+<div class="flash" id="flash"></div>
+<div class="app">
+
+  <header>
+    <div>
+      <div class="logo">FACE SWAP</div>
+      <div class="tagline">REAL-TIME · IN-BROWSER · PRIVATE</div>
+    </div>
+    <div class="badge"><div class="sdot" id="sdot"></div><span id="stxt">IDLE</span></div>
+  </header>
+
+  <div class="grid">
+
+<!-- LEFT: Upload -->
+<div>
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">01 — Source Face</div>
+      <div class="panel-badge" id="srcBadge">NO IMAGE</div>
+    </div>
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" accept="image/*" id="fileInput" onchange="handleUpload(event)">
+      <img id="sourcePreview" alt="source">
+      <div id="uploadDefault" style="display:flex;flex-direction:column;align-items:center;gap:1rem;padding:2rem;">
+        <div class="upload-icon">📸</div>
+        <div>
+          <div class="upload-text">Upload Selfie</div>
+          <div class="upload-sub" style="margin-top:.3rem;">JPG, PNG · Face clearly visible</div>
+        </div>
+      </div>
+      <div class="source-overlay" id="sourceOverlay" style="display:none;">
+        <div class="source-overlay-txt">📷 Change Photo</div>
+        <div class="source-overlay-sub">Click to replace</div>
+      </div>
+    </div>
+    <div class="face-info" id="faceInfo">
+      <div class="face-dot" style="background:#4ade80;box-shadow:0 0 6px #4ade80;"></div>
+      <div class="face-info-txt">Face detected — <b id="landmarkCount">0</b> landmarks mapped</div>
+    </div>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps" style="padding:1rem 0 0;">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-txt"><b>Upload a clear selfie</b> — front-facing, good lighting works best</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-txt"><b>Start camera</b> — allow access when prompted</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-txt"><b>Watch the swap</b> — your face replaces the live video face in real-time</div>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT: Camera + output -->
+<div>
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">02 — Live Output</div>
+      <div class="panel-badge" id="camBadge">OFFLINE</div>
+    </div>
+
+    <div class="mode-bar">
+      <div class="mode-btn active" id="modeSwap" onclick="setMode('swap')">FACE SWAP</div>
+      <div class="mode-btn" id="modeBlend" onclick="setMode('blend')">BLEND</div>
+      <div class="mode-btn" id="modeWire" onclick="setMode('wire')">WIREFRAME</div>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-label" id="progressLabel"></div>
+
+    <div class="cam-body" id="camBody">
+      <div class="cam-ph" id="camPh">
+        <div class="cam-ph-icon">🎥</div>
+        <div class="cam-ph-txt">START CAMERA TO BEGIN FACE SWAP</div>
+      </div>
+      <video id="vid" autoplay muted playsinline style="display:none;"></video>
+      <!-- Hidden working canvas for detection -->
+      <canvas id="detectionCanvas" style="display:none;"></canvas>
+      <!-- Output canvas shown to user -->
+      <canvas id="outputCanvas" style="display:none;"></canvas>
+      <div class="scan-wrap" id="scanWrap"><div class="scan-bar"></div></div>
+      <div class="warn" id="warn">NO FACE IN FRAME</div>
+    </div>
+
+    <button class="start-btn" id="startBtn" onclick="startCamera()">
+      <span class="start-btn-icon">▶</span>
+      <span id="startBtnTxt">Start Camera</span>
+    </button>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-val" id="statFPS">—</div><div class="stat-label">FPS</div></div>
+      <div class="stat"><div class="stat-val" id="statConf">—</div><div class="stat-label">CONF</div></div>
+      <div class="stat"><div class="stat-val" id="statMode">SWAP</div><div class="stat-label">MODE</div></div>
+    </div>
+  </div>
+</div>
+
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<!-- face-api.js -->
+
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js"></script>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// GLOBALS
+// ─────────────────────────────────────────────────────────────────
+const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model';
+
+let sourceImg        = null;   // HTMLImageElement of uploaded photo
+let sourceLandmarks  = null;   // 68-point landmarks from source image
+let sourceDescriptor = null;
+
+let detector   = null;
+let running    = false;
+let mode       = 'swap';  // 'swap' | 'blend' | 'wire'
+let fpsArr     = [];
+let lastFrame  = 0;
+let faceVisible= false;
+
+// DOM
+const vid            = document.getElementById('vid');
+const detCanvas      = document.getElementById('detectionCanvas');
+const outCanvas      = document.getElementById('outputCanvas');
+const detCtx         = detCanvas.getContext('2d');
+const outCtx         = outCanvas.getContext('2d');
+const sdot           = document.getElementById('sdot');
+const stxt           = document.getElementById('stxt');
+const startBtn       = document.getElementById('startBtn');
+const startBtnTxt    = document.getElementById('startBtnTxt');
+const camPh          = document.getElementById('camPh');
+const scanWrap       = document.getElementById('scanWrap');
+const warn           = document.getElementById('warn');
+const srcBadge       = document.getElementById('srcBadge');
+const camBadge       = document.getElementById('camBadge');
+const faceInfo       = document.getElementById('faceInfo');
+const landmarkCount  = document.getElementById('landmarkCount');
+const progressWrap   = document.getElementById('progressWrap');
+const progressFill   = document.getElementById('progressFill');
+const progressLabel  = document.getElementById('progressLabel');
+const toastEl        = document.getElementById('toastEl');
+const sourcePreview  = document.getElementById('sourcePreview');
+const uploadDefault  = document.getElementById('uploadDefault');
+const sourceOverlay  = document.getElementById('sourceOverlay');
+
+// ─────────────────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────────────────
+function toast(msg, dur=4000) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('on');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toastEl.classList.remove('on'), dur);
+}
+
+function setProgress(pct, label='') {
+  if (pct === null) {
+    progressWrap.style.display = 'none';
+    progressLabel.style.display = 'none';
+    return;
+  }
+  progressWrap.style.display = 'block';
+  progressFill.style.width = pct + '%';
+  if (label) {
+    progressLabel.style.display = 'block';
+    progressLabel.textContent = label;
+  }
+}
+
+function setMode(m) {
+  mode = m;
+  ['swap','blend','wire'].forEach(id => {
+    document.getElementById('mode'+id.charAt(0).toUpperCase()+id.slice(1))
+      .classList.toggle('active', id===m);
+  });
+  document.getElementById('statMode').textContent = m.toUpperCase();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// UPLOAD HANDLER
+// ─────────────────────────────────────────────────────────────────
+async function handleUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const url = URL.createObjectURL(file);
+  sourceImg = new Image();
+  sourceImg.onload = async () => {
+    sourcePreview.src = url;
+    sourcePreview.style.display = 'block';
+    uploadDefault.style.display = 'none';
+    sourceOverlay.style.display = 'flex';
+    srcBadge.textContent = 'PROCESSING…';
+    srcBadge.className = 'panel-badge load';
+
+    // Check models loaded
+    if (!window._modelsLoaded) {
+      toast('⏳ Models still loading, please wait…');
+      await waitForModels();
+    }
+
+    // Detect face in source
+    try {
+      const det = await faceapi
+        .detectSingleFace(sourceImg, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3 }))
+        .withFaceLandmarks();
+
+      if (!det) {
+        srcBadge.textContent = 'NO FACE';
+        srcBadge.className = 'panel-badge error';
+        faceInfo.style.display = 'none';
+        toast('⚠️ No face detected in uploaded image. Try a clearer selfie.');
+        sourceLandmarks = null;
+        return;
+      }
+
+      sourceLandmarks = det.landmarks;
+      landmarkCount.textContent = det.landmarks.positions.length;
+      faceInfo.style.display = 'flex';
+      srcBadge.textContent = 'FACE READY';
+      srcBadge.className = 'panel-badge on';
+      toast('✅ Face mapped! Start camera to swap.');
+    } catch(err) {
+      console.error(err);
+      srcBadge.textContent = 'ERROR';
+      srcBadge.className = 'panel-badge error';
+      toast('Error processing image: ' + err.message);
+    }
+  };
+  sourceImg.src = url;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// LOAD MODELS
+// ─────────────────────────────────────────────────────────────────
+window._modelsLoaded = false;
+
+async function loadModels() {
+  setProgress(5, 'Loading face detector…');
+  await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+  setProgress(50, 'Loading landmark model…');
+  await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+  setProgress(100, '');
+  window._modelsLoaded = true;
+  setTimeout(() => setProgress(null), 600);
+}
+
+function waitForModels() {
+  return new Promise(res => {
+    const iv = setInterval(() => {
+      if (window._modelsLoaded) { clearInterval(iv); res(); }
+    }, 200);
+  });
+}
+
+// Start loading immediately
+loadModels().catch(e => {
+  toast('Failed to load AI models: ' + e.message);
+  console.error(e);
+});
+
+// ─────────────────────────────────────────────────────────────────
+// CAMERA
+// ─────────────────────────────────────────────────────────────────
+async function startCamera() {
+  if (running) return;
+  startBtn.disabled = true;
+  startBtnTxt.textContent = 'Opening camera…';
+  sdot.className = 'sdot load'; stxt.textContent = 'STARTING';
+
+  if (!window._modelsLoaded) {
+    startBtnTxt.textContent = 'Loading models…';
+    await waitForModels();
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:'user', width:{ ideal:640 }, height:{ ideal:480 } }
+    });
+    vid.srcObject = stream;
+    await new Promise(res => { vid.onloadedmetadata = res; });
+    await vid.play();
+
+    const W = vid.videoWidth, H = vid.videoHeight;
+    detCanvas.width = W; detCanvas.height = H;
+    outCanvas.width = W; outCanvas.height = H;
+
+    vid.style.display     = 'none'; // hide raw feed
+    outCanvas.style.display = 'block';
+
+    camPh.style.display = 'none';
+    scanWrap.classList.add('on');
+    sdot.className = 'sdot live'; stxt.textContent = 'LIVE';
+    camBadge.textContent = 'LIVE'; camBadge.className = 'panel-badge on';
+    startBtn.textContent = '⏹ Stop';
+    startBtn.onclick = stopCamera;
+    startBtn.disabled = false;
+    startBtnTxt.textContent = 'Stop Camera';
+
+    running = true;
+    renderLoop();
+
+  } catch(e) {
+    let msg = 'Camera denied.';
+    if (e.name==='NotFoundError') msg = 'No camera found.';
+    if (e.name==='NotAllowedError') msg = 'Camera permission denied — check browser settings.';
+    toast(msg);
+    sdot.className = 'sdot'; stxt.textContent = 'IDLE';
+    startBtn.disabled = false;
+    startBtnTxt.textContent = 'Start Camera';
+  }
+}
+
+function stopCamera() {
+  running = false;
+  if (vid.srcObject) vid.srcObject.getTracks().forEach(t=>t.stop());
+  vid.srcObject = null;
+  outCanvas.style.display = 'none';
+  camPh.style.display = 'flex';
+  scanWrap.classList.remove('on');
+  sdot.className = 'sdot'; stxt.textContent = 'IDLE';
+  camBadge.textContent = 'OFFLINE'; camBadge.className = 'panel-badge';
+  startBtn.onclick = startCamera;
+  startBtnTxt.textContent = 'Start Camera';
+  warn.style.display = 'none';
+  document.getElementById('statFPS').textContent = '—';
+  document.getElementById('statConf').textContent = '—';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MAIN RENDER LOOP
+// ─────────────────────────────────────────────────────────────────
+let frameSkip = 0;
+async function renderLoop() {
+  if (!running) return;
+
+  const now = performance.now();
+  const delta = now - lastFrame;
+  lastFrame = now;
+  fpsArr.push(1000/delta);
+  if (fpsArr.length > 10) fpsArr.shift();
+  const fps = Math.round(fpsArr.reduce((a,b)=>a+b,0)/fpsArr.length);
+  document.getElementById('statFPS').textContent = fps;
+
+  if (vid.readyState >= 2) {
+    // Draw current frame to detection canvas
+    detCtx.drawImage(vid, 0, 0);
+
+    // Detect every 3rd frame for perf
+    frameSkip++;
+    if (frameSkip % 3 === 0) {
+      try {
+        const det = await faceapi
+          .detectSingleFace(detCanvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3 }))
+          .withFaceLandmarks();
+
+        if (det) {
+          warn.style.display = 'none';
+          faceVisible = true;
+          const conf = Math.round(det.detection.score * 100);
+          document.getElementById('statConf').textContent = conf + '%';
+          renderFrame(det);
+        } else {
+          warn.style.display = 'block';
+          faceVisible = false;
+          document.getElementById('statConf').textContent = '—';
+          // Just draw plain video
+          outCtx.drawImage(vid, 0, 0, outCanvas.width, outCanvas.height);
+        }
+      } catch(_) {
+        outCtx.drawImage(vid, 0, 0, outCanvas.width, outCanvas.height);
+      }
+    }
+  }
+
+  requestAnimationFrame(renderLoop);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// FACE SWAP RENDERING
+// ─────────────────────────────────────────────────────────────────
+function renderFrame(liveDet) {
+  const W = outCanvas.width, H = outCanvas.height;
+
+  // Base: draw live video
+  outCtx.drawImage(vid, 0, 0, W, H);
+
+  // Wireframe mode: just draw landmarks
+  if (mode === 'wire') {
+    drawLandmarks(outCtx, liveDet.landmarks, '#00e5cc', 1.5);
+    return;
+  }
+
+  if (!sourceLandmarks || !sourceImg) {
+    // No source: just show raw feed
+    return;
+  }
+
+  // Get key landmark regions
+  const livePts  = liveDet.landmarks.positions;
+  const srcPts   = sourceLandmarks.positions;
+
+  // Build face convex hull for masking
+  const liveHull = getFaceHull(livePts);
+  const srcHull  = getSrcFaceRegion(srcPts);
+
+  if (mode === 'blend' || mode === 'swap') {
+    swapFace(livePts, srcPts, liveHull, srcHull);
+  }
+
+  // Debug: draw landmark dots in wire mode
+  if (mode === 'wire') {
+    drawLandmarks(outCtx, liveDet.landmarks, '#ff2d78', 1);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CORE FACE SWAP ENGINE
+// ─────────────────────────────────────────────────────────────────
+function swapFace(livePts, srcPts, liveHull, srcHull) {
+  const W = outCanvas.width, H = outCanvas.height;
+
+  // ── 1. Compute bounding boxes ──
+  const liveBB = getBoundingBox(liveHull);
+  const srcBB  = getBoundingBox(getSrcFaceRegion(srcPts));
+
+  // ── 2. Compute source face region on source image ──
+  // Scale source points to image dimensions
+  const imgW = sourceImg.naturalWidth, imgH = sourceImg.naturalHeight;
+  // face-api normalizes landmarks to the detection input size (sourceImg dimensions)
+  const scaledSrcPts = srcPts.map(p => ({
+    x: p.x / imgW * imgW,
+    y: p.y / imgH * imgH,
+  }));
+  const scaledSrcBB = getBoundingBox(scaledSrcPts.filter((_,i) => FACE_HULL_INDICES.includes(i)));
+
+  // ── 3. Offscreen canvas: extract source face ──
+  const srcFaceCanvas = document.createElement('canvas');
+  srcFaceCanvas.width = liveBB.w;
+  srcFaceCanvas.height = liveBB.h;
+  const sfCtx = srcFaceCanvas.getContext('2d');
+
+  // Draw source image scaled to target bounding box
+  sfCtx.drawImage(
+    sourceImg,
+    scaledSrcBB.x, scaledSrcBB.y, scaledSrcBB.w, scaledSrcBB.h,
+    0, 0, liveBB.w, liveBB.h
+  );
+
+  // ── 4. Create mask of live face hull ──
+  const maskCanvas = document.createElement('canvas');
+  maskCanvas.width = W; maskCanvas.height = H;
+  const mCtx = maskCanvas.getContext('2d');
+
+  // Feathered ellipse mask based on live face region
+  const cx = liveBB.x + liveBB.w/2, cy = liveBB.y + liveBB.h/2;
+  const rx = liveBB.w * 0.48, ry = liveBB.h * 0.58;
+
+  const grad = mCtx.createRadialGradient(cx, cy, Math.min(rx,ry)*0.4, cx, cy, Math.max(rx,ry));
+  grad.addColorStop(0, 'rgba(0,0,0,1)');
+  grad.addColorStop(0.7, 'rgba(0,0,0,1)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+  mCtx.fillStyle = grad;
+  mCtx.beginPath();
+  mCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+  mCtx.fill();
+
+  // ── 5. Composite onto output ──
+  // Save current (live) frame
+  const liveSnap = outCtx.getImageData(0, 0, W, H);
+
+  // Draw source face at live face location
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = W; tempCanvas.height = H;
+  const tCtx = tempCanvas.getContext('2d');
+
+  // Draw original frame first
+  tCtx.putImageData(liveSnap, 0, 0);
+
+  // Draw the swapped face
+  tCtx.save();
+  tCtx.globalCompositeOperation = 'source-over';
+  tCtx.drawImage(srcFaceCanvas, liveBB.x, liveBB.y, liveBB.w, liveBB.h);
+  tCtx.restore();
+
+  // Apply mask: blend source face using feathered mask
+  const faceData = tCtx.getImageData(0, 0, W, H);
+  const maskData = mCtx.getImageData(0, 0, W, H);
+  const orig     = liveSnap;
+
+  const blendAlpha = mode === 'blend' ? 0.65 : 0.92;
+
+  for (let i=0; i<faceData.data.length; i+=4) {
+    const m = maskData.data[i+3] / 255; // mask alpha
+    if (m > 0) {
+      const a = m * blendAlpha;
+      faceData.data[i]   = faceData.data[i]   * a + orig.data[i]   * (1-a);
+      faceData.data[i+1] = faceData.data[i+1] * a + orig.data[i+1] * (1-a);
+      faceData.data[i+2] = faceData.data[i+2] * a + orig.data[i+2] * (1-a);
+    }
+  }
+
+  outCtx.putImageData(faceData, 0, 0);
+
+  // Optional: draw subtle landmarks
+  if (mode === 'wire') {
+    const liveDets = { positions: livePts };
+    outCtx.strokeStyle = 'rgba(0,229,204,0.5)';
+    outCtx.lineWidth = 1;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// LANDMARK UTILS
+// ─────────────────────────────────────────────────────────────────
+
+// Indices forming face outline hull (jawline + forehead approximation)
+const FACE_HULL_INDICES = [
+  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16, // jaw
+  26,25,24,23,22,21,20,19,18,17              // brow top
+];
+
+function getFaceHull(pts) {
+  return FACE_HULL_INDICES.map(i => pts[i]);
+}
+
+function getSrcFaceRegion(pts) {
+  return FACE_HULL_INDICES.map(i => pts[i]);
+}
+
+function getBoundingBox(pts) {
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  pts.forEach(p => {
+    if (p.x < minX) minX=p.x; if (p.x > maxX) maxX=p.x;
+    if (p.y < minY) minY=p.y; if (p.y > maxY) maxY=p.y;
+  });
+  // Add some padding
+  const padX = (maxX-minX)*0.05, padY = (maxY-minY)*0.05;
+  return {
+    x: Math.max(0, minX-padX),
+    y: Math.max(0, minY-padY),
+    w: (maxX-minX) + padX*2,
+    h: (maxY-minY) + padY*2
+  };
+}
+
+function drawLandmarks(ctx, landmarks, color, size) {
+  ctx.fillStyle = color;
+  landmarks.positions.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, size, 0, Math.PI*2);
+    ctx.fill();
+  });
+}
+</script>
+
+</body>
+</html>
