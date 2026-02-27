@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+```
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface2: #1c1c28;
+  --border: #2a2a3d;
+  --accent: #ff4d6d;
+  --accent2: #7c3aed;
+  --text: #f0f0f8;
+  --muted: #6b6b8a;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(124,58,237,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(255,77,109,0.1) 0%, transparent 60%);
+}
+
+/* API KEY GATE */
+#gate {
+  width: 100%;
+  max-width: 440px;
+  padding: 40px 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeUp 0.5s ease;
+}
+
+#gate .gate-icon {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+#gate h2 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.4px;
+}
+
+#gate p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+#gate p a {
+  color: #c4b5fd;
+  text-decoration: none;
+}
+
+#gate p a:hover { text-decoration: underline; }
+
+#gate input[type="password"] {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#gate input[type="password"]:focus {
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.1);
+}
+
+#gate input[type="password"]::placeholder { color: var(--muted); }
+
+.gate-submit {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.gate-submit:hover { opacity: 0.9; transform: translateY(-1px); }
+.gate-submit:active { transform: translateY(0); }
+
+.gate-error {
+  font-size: 12px;
+  color: var(--accent);
+  display: none;
+}
+
+/* MAIN CHAT */
+.shell {
+  width: 100%;
+  max-width: 780px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px;
+  display: none;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 0 20px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.logo-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+}
+
+.logo-name span {
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+  50%       { box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+}
+
+.reset-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.messages::-webkit-scrollbar { width: 4px; }
+.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 16px;
+  padding: 40px 0;
+  animation: fadeIn 0.6s ease;
+}
+
+.welcome-icon {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+.welcome h2 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 28px;
+  text-align: center;
+  letter-spacing: -0.5px;
+}
+
+.welcome p {
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  max-width: 340px;
+  line-height: 1.7;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 500px;
+  margin-top: 8px;
+}
+
+.suggestion {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.suggestion:hover {
+  border-color: var(--accent2);
+  color: #c4b5fd;
+  transform: translateY(-1px);
+}
+
+.msg {
+  display: flex;
+  gap: 12px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeUp  {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.msg.user { flex-direction: row-reverse; }
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.msg.ai .avatar   { background: linear-gradient(135deg, var(--accent2), var(--accent)); }
+.msg.user .avatar { background: var(--surface2); border: 1px solid var(--border); }
+
+.bubble {
+  max-width: 72%;
+  padding: 14px 18px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.msg.ai .bubble {
+  background: #161622;
+  border: 1px solid var(--border);
+  border-top-left-radius: 4px;
+}
+
+.msg.user .bubble {
+  background: #1e1e30;
+  border: 1px solid rgba(124,58,237,0.3);
+  border-top-right-radius: 4px;
+  color: #d4d4f0;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  background: var(--muted);
+  border-radius: 50%;
+  animation: bounce 1.2s infinite;
+}
+
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(-6px); }
+}
+
+.input-area {
+  padding: 16px 0 24px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
+
+.input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 10px 12px;
+  transition: border-color 0.2s;
+}
+
+.input-row:focus-within {
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.08);
+}
+
+textarea {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 14px;
+  resize: none;
+  line-height: 1.6;
+  max-height: 160px;
+  min-height: 24px;
+  padding: 2px 0;
+}
+
+textarea::placeholder { color: var(--muted); }
+
+.send-btn {
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  opacity: 0.4;
+}
+
+.send-btn.active { opacity: 1; }
+.send-btn.active:hover  { transform: scale(1.06); }
+.send-btn.active:active { transform: scale(0.97); }
+.send-btn svg { fill: white; }
+
+.footer-note {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+
+.bubble code {
+  background: rgba(124,58,237,0.15);
+  border: 1px solid rgba(124,58,237,0.2);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 12.5px;
+  font-family: 'DM Mono', monospace;
+  color: #c4b5fd;
+}
+
+.bubble pre {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 8px 0;
+  overflow-x: auto;
+  font-size: 12.5px;
+}
+
+.bubble pre code { background: none; border: none; padding: 0; color: #a5f3fc; }
+.bubble strong   { color: #e2e2f0; font-weight: 600; }
+
+@media (max-width: 600px) {
+  .shell { padding: 0 12px; }
+  .bubble { max-width: 88%; }
+  .welcome h2 { font-size: 22px; }
+  #gate { margin: 0 16px; }
+}
+```
+
+  </style>
+</head>
+<body>
+
+  <!-- API KEY GATE -->
+
+  <div id="gate">
+    <div class="gate-icon">⚡</div>
+    <div>
+      <h2>Enter your API Key</h2>
+    </div>
+    <p>
+      Your <strong>Anthropic API key</strong> is stored only in your browser's memory for this session — never sent anywhere except directly to Anthropic.<br><br>
+      Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+    </p>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-..." />
+    <div class="gate-error" id="gateError">Please enter a valid API key (starts with sk-ant-)</div>
+    <button class="gate-submit" onclick="startChat()">Start Chatting →</button>
+  </div>
+
+  <!-- CHAT UI -->
+
+  <div class="shell" id="shell">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="logo-name">AI<span>Assistant</span></div>
+      </div>
+      <div class="header-right">
+        <div class="status"><div class="status-dot"></div>Online</div>
+        <button class="reset-btn" onclick="resetKey()">Change Key</button>
+      </div>
+    </header>
+
+```
+<div class="messages" id="messages">
+  <div class="welcome" id="welcome">
+    <div class="welcome-icon">⚡</div>
+    <h2>What can I help you with?</h2>
+    <p>Powered by Claude — ask me anything. Fast, accurate, ready to dive deep.</p>
+    <div class="suggestions">
+      <button class="suggestion" onclick="useSuggestion(this)">Explain a concept</button>
+      <button class="suggestion" onclick="useSuggestion(this)">Write some code</button>
+      <button class="suggestion" onclick="useSuggestion(this)">Brainstorm ideas</button>
+      <button class="suggestion" onclick="useSuggestion(this)">Summarize text</button>
+      <button class="suggestion" onclick="useSuggestion(this)">Draft an email</button>
+    </div>
+  </div>
+</div>
+
+<div class="input-area">
+  <div class="input-row">
+    <textarea
+      id="input"
+      placeholder="Ask me anything..."
+      rows="1"
+      oninput="autoResize(this); toggleSend()"
+      onkeydown="handleKey(event)"
+    ></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+    </button>
+  </div>
+  <div class="footer-note">Powered by Claude · Enter to send · Shift+Enter for new line</div>
+</div>
+```
+
+  </div>
+
+  <script>
+    let ANTHROPIC_API_KEY = '';
+    let isLoading = false;
+    let history = [];
+
+    const gateEl   = document.getElementById('gate');
+    const shellEl  = document.getElementById('shell');
+    const inputEl  = document.getElementById('input');
+    const sendBtn  = document.getElementById('sendBtn');
+    const msgsEl   = document.getElementById('messages');
+    const gateErr  = document.getElementById('gateError');
+
+    // Allow Enter to submit on the gate
+    document.getElementById('apiKeyInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') startChat();
+    });
+
+    function startChat() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      if (!key.startsWith('sk-ant-')) {
+        gateErr.style.display = 'block';
+        return;
+      }
+      ANTHROPIC_API_KEY = key;
+      gateEl.style.display = 'none';
+      shellEl.style.display = 'flex';
+      inputEl.focus();
+    }
+
+    function resetKey() {
+      ANTHROPIC_API_KEY = '';
+      history = [];
+      shellEl.style.display = 'none';
+      gateEl.style.display = 'flex';
+      document.getElementById('apiKeyInput').value = '';
+      gateErr.style.display = 'none';
+      // reset messages
+      msgsEl.innerHTML = `
+        <div class="welcome" id="welcome">
+          <div class="welcome-icon">⚡</div>
+          <h2>What can I help you with?</h2>
+          <p>Powered by Claude — ask me anything. Fast, accurate, ready to dive deep.</p>
+          <div class="suggestions">
+            <button class="suggestion" onclick="useSuggestion(this)">Explain a concept</button>
+            <button class="suggestion" onclick="useSuggestion(this)">Write some code</button>
+            <button class="suggestion" onclick="useSuggestion(this)">Brainstorm ideas</button>
+            <button class="suggestion" onclick="useSuggestion(this)">Summarize text</button>
+            <button class="suggestion" onclick="useSuggestion(this)">Draft an email</button>
+          </div>
+        </div>`;
+    }
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+    }
+
+    function toggleSend() {
+      sendBtn.classList.toggle('active', inputEl.value.trim().length > 0);
+    }
+
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    }
+
+    function useSuggestion(btn) {
+      inputEl.value = btn.textContent;
+      autoResize(inputEl);
+      toggleSend();
+      inputEl.focus();
+    }
+
+    function appendMessage(role, text) {
+      document.getElementById('welcome')?.remove();
+      const row    = document.createElement('div');
+      row.className = `msg ${role}`;
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.textContent = role === 'ai' ? '⚡' : '👤';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = renderMd(text);
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      msgsEl.appendChild(row);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      return bubble;
+    }
+
+    function renderMd(text) {
+      return text
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/```(\w*)\n?([\s\S]*?)```/g, (_,l,c) => `<pre><code>${c.trim()}</code></pre>`)
+
+```
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+function showTyping() {
+  document.getElementById('welcome')?.remove();
+  const row = document.createElement('div');
+  row.className = 'msg ai'; row.id = 'typing';
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar'; avatar.textContent = '⚡';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  row.appendChild(avatar); row.appendChild(bubble);
+  msgsEl.appendChild(row);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function removeTyping() { document.getElementById('typing')?.remove(); }
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text || isLoading) return;
+
+  isLoading = true;
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+  sendBtn.classList.remove('active');
+
+  appendMessage('user', text);
+  history.push({ role: 'user', content: text });
+  showTyping();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: 'You are a helpful, knowledgeable, and friendly AI assistant. Be concise but thorough. Use markdown formatting when it helps clarity (code blocks, bold, etc.).',
+        messages: history.map(m => ({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content
+        }))
+      })
+    });
+
+    removeTyping();
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      appendMessage('ai', `⚠️ API error: ${data.error?.message || res.statusText}`);
+      history.pop();
+      return;
+    }
+
+    const reply = data.content?.[0]?.text || 'No response.';
+    appendMessage('ai', reply);
+    history.push({ role: 'assistant', content: reply });
+
+  } catch (e) {
+    removeTyping();
+    appendMessage('ai', `⚠️ Network error: ${e.message}`);
+    history.pop();
+  } finally {
+    isLoading = false;
+    inputEl.focus();
+  }
+}
+```
+
+  </script>
+</body>
+</html>
