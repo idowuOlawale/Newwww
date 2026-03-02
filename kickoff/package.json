@@ -1,0 +1,12 @@
+{
+  "name": "kickoff",
+  "version": "1.0.0",
+  "description": "Live football scores — Premier League, La Liga, Serie A, Ligue 1",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
